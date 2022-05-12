@@ -7,28 +7,27 @@ from tkinter import E
 from typing import List, Set
 
 import numpy as np
-import pyautogui
 import pygame
 from playsound import playsound
 
 pygame.init()
 
-PATH = os.getcwd()
+PATH = os.getcwd() + "/files/"
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 
 BG_COLOR = (192, 192, 192)
 
 IMAGE_NAMES = ["empty", "cell1", "cell2", "cell3", "cell4",
-               "cell5", "cell6", "cell7", "cell8", "clicked_mine", "smile", "mine"]
+               "cell5", "cell6", "cell7", "cell8", "clicked_mine", "smile", "shocked", "cool", "dead", "settings", "mine"]
 
-SPR_LIST = [pygame.image.load(PATH + "/files/%s.png" % name)
+SPR_LIST = [pygame.image.load(PATH + "%s.png" % name)
             for name in IMAGE_NAMES]
 
-FLAG_SPR = pygame.image.load(PATH + "/files/flag.png")
-CELL_SPR = pygame.image.load(PATH + "/files/cell.png")
-CLICKEDMINE_SPR = pygame.image.load(PATH + "/files/clicked_mine.png")
-NOMINE_SPR = pygame.image.load(PATH + "/files/nomine.png")
+FLAG_SPR = pygame.image.load(PATH + "flag.png")
+CELL_SPR = pygame.image.load(PATH + "cell.png")
+CLICKEDMINE_SPR = pygame.image.load(PATH + "clicked_mine.png")
+NOMINE_SPR = pygame.image.load(PATH + "nomine.png")
 
 
 class Cell():
@@ -100,10 +99,11 @@ class Cell():
             self.hidden = False
             if self.content == -1:
                 self.content = 9
-                # threading.Thread(target=playsound, args=(PATH + "/files/game-over.mp3",)).start()
+                # threading.Thread(target=playsound, args=(PATH + "game-over.mp3",)).start()
                 for list in GAMES[self.gameId].grid.contents:
                     for cell in list:
-                        cell.hidden = False
+                        if not cell.flagged:
+                            cell.hidden = False
 
                 return
 
@@ -120,7 +120,9 @@ class Cell():
                                 if not adj_cell.flagged:
                                     adj_cell.hidden = False
                                     if adj_cell not in checked_cells:
-                                        cells_to_check.add(adj_cell)
+                                        if cell.content == 0 or adj_cell.content == 0:
+                                            cells_to_check.add(adj_cell)
+
 
                 checked_cells.add(cell)
         except Exception as e:
@@ -226,14 +228,18 @@ class Game():
             "easy_start": True,
             "width": 20,
             "height": 25,
-            "mines": 1,  # Percentage
+            "mines": 25,  # Percentage
+            "open_for_clients": False,
             # Size of one cell (WARNING: make sure to change the images dimension as well)
             "cell_size": 32,
             "top_border_size": 100,  # Size of top border
             "lrb_border_size": 16,  # Left, Right, Bottom border
         }
+        self.settings_button = Cell(self.gameId, 14, False)
+        self.restart_button = Cell(self.gameId, 10, False)
+        self.settings_pos = (self.settings["width"] - 0.75, -2.75)
         if self.settings["width"] % 2 == 0:
-            self.restart_pos = self.settings["width"] / 2 - 0.5
+            self.restart_pos = (self.settings["width"] / 2 - 0.5, -2)
         else:
             self.restart_pos = self.settings["width"] / 2
 
@@ -259,19 +265,21 @@ class Game():
                             self.grid.contents[int(data[0])][int(
                                 data[1])].revealCell()
                         elif data[2] == "flag":
-                            self.grid.contents[int(data[0])][int(
-                                data[1])].flagged = True
-                        elif data[2] == "unflag":
-                            self.grid.contents[int(data[0])][int(
-                                data[1])].flagged = False
-
+                            self.flag(int(data[0]), int(data[1]))
                         conn.sendall(b"Success!")
                     except Exception as e:
                         print(e)
                         conn.sendall(b"Fail!")
 
-    def highlightCell(self):
-        pass
+    def highlightCell(self, event: pygame.event.Event):
+        x = (event.pos[0] - self.settings["lrb_border_size"]) / \
+            self.settings["cell_size"]
+        y = (event.pos[1] - self.settings["top_border_size"]) / \
+            self.settings["cell_size"]
+        if round(x) == round(self.restart_pos[0]) and floor(y) == self.restart_pos[1]:
+            self.restart_button.content = 11
+        elif self.restart_button.content != 10:
+            self.restart_button.content = 10
 
     def findAffectedCell(self, event: pygame.event.Event = None):
         """Reacts to player left click
@@ -290,8 +298,9 @@ class Game():
                        3: self.flag,
                        }
             actions[event.button](x, y)
-        elif round(x) == round(self.restart_pos) and floor(y) == -2:
+        elif round(x) == round(self.restart_pos[0]) and floor(y) == self.restart_pos[1]:
             self.restart()
+
 
     def reveal(self, x: int, y: int):
         if not self.grid.contents_created:
@@ -319,9 +328,10 @@ class Game():
 
     def play(self):
         self.drawThread = threading.Thread(target=self.gameLoop)
-        self.listenThread = threading.Thread(target=self.listener)
         self.drawThread.start()
-        self.listenThread.start()
+        if self.settings["open_for_clients"]:
+            self.listenThread = threading.Thread(target=self.listener)
+            self.listenThread.start()
 
     def gameLoop(self):
 
@@ -335,7 +345,6 @@ class Game():
             (self.disp_width, self.disp_height))  # Create display
         pygame.display.set_caption("Minesweeper")
 
-        self.restart_button = Cell(self.gameId, 10, False)
         self.playing = True
         self.flagging = False
         self.grid = Grid(self.gameId)
@@ -347,7 +356,10 @@ class Game():
                 for x in range(GAMES[self.gameId].settings["width"]):
                     self.grid.contents[y][x].drawCell(x, y)
 
-            self.restart_button.drawCell(self.restart_pos, -2)
+            self.settings_button.drawCell(
+                self.settings_pos[0], self.settings_pos[1])
+            self.restart_button.drawCell(
+                self.restart_pos[0], self.restart_pos[1])
 
             pygame.display.update()
 
