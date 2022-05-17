@@ -1,4 +1,5 @@
 import socket
+from telnetlib import GA
 import threading
 from math import floor
 from typing import List, Set
@@ -13,7 +14,7 @@ pygame.init()
 HOST = "127.0.0.1"  # The server's hostname or IP address
 PORT = 65432  # The port used by the server
 
-PATH = __file__[:-7] + "files/"
+PATH = __file__[:-14] + "files/"
 IMAGE_NAMES = ["empty", "cell1", "cell2", "cell3", "cell4",
                "cell5", "cell6", "cell7", "cell8", "clicked_mine", "smile", "shocked", "cool", "dead", "settings", "mine"]
 
@@ -246,6 +247,8 @@ class Game():
         self.settings_button = Cell(14, False)
         self.restart_button = Cell(10, False)
         self.settings_pos = (self.settings["width"] - 0.75, -2.75)
+        self.drawThread = threading.Thread(target=self.gameLoop)
+        self.clientThread = threading.Thread(target=self.client)
         if self.settings["width"] % 2 == 0:
             self.restart_pos = (self.settings["width"] / 2 - 0.5, -2)
         else:
@@ -310,20 +313,32 @@ class Game():
 
 
     def client(self):
+
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
-            s.sendall(b'game')
+            s.sendall(b'minesweeper')
             print(str(s.recv(2048), "ascii"))
             while self.runing:
                 try:
                     data = str(s.recv(2048), "ascii")
-                    data = data.split()
-                    if data[0] == "init":
-                        s.sendall(b'connected ' + bytes(data[1], 'ascii'))
-                        # s.sendall(b'connected to client' + bytes(data[1], 'ascii'))
-                    print(data)
                     if not data:
                         break
+
+                    if data.startswith("say"):
+                        print(data[4:])
+                        s.sendall(b'aquired by client')
+
+                    if data.startswith("reveal"):
+                        data = data.split()
+                        GAME.reveal(int(data[1]), int(data[2]))
+
+                    if data.startswith("setting"):
+                        data = data.split()
+                        GAME.settings[data[1]] = int(data[2])
+                        GAME.restart()
+
+
                 except Exception as e:
                     print(e)
 
@@ -341,8 +356,6 @@ class Game():
         pygame.display.set_caption("Minesweeper")
         
         self.grid = Grid()
-        self.drawThread = threading.Thread(target=self.gameLoop)
-        self.clientThread = threading.Thread(target=self.client)
         self.drawThread.start()
         self.clientThread.start()
         if self.settings["open_for_clients"]:
@@ -369,6 +382,8 @@ class Game():
     def restart(self):
         self.grid = Grid()
         self.playing = True
+        self.play()
+
 
 
     def exit(self, event: pygame.event.Event):

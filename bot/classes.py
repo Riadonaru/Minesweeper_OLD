@@ -5,23 +5,12 @@ from typing import Any, List
 
 class Client():
 
-    _acceptedClientTypes = {"bot", "game"}
+    _acceptedClientTypes = {"minesweeper", "snake"}
 
     def __init__(self, id: int, type: str, socket: socket.socket) -> None:
         self.id = id
         self.type = type  # Bot, Game, etc.
         self.socket = socket
-        self.__recvrId = -1
-
-
-    @property
-    def recvrId(self):
-        return self.__recvrId
-
-
-    @recvrId.setter
-    def recvrId(self, __value: int):
-        self.__recvrId = __value
 
 
     @property
@@ -60,19 +49,7 @@ class Communicator(metaclass=Singleton):
 
     @staticmethod
     def pipe(fromClient: Client, message: str):
-        CLIENT_TYPES[fromClient.type](fromClient, message)
-
-    @staticmethod
-    def game(fromClient: Client, message: str):
-        CLIENTS[fromClient.recvrId].socket.sendall(bytes(message, 'ascii'))  
-
-    @staticmethod
-    def bot(fromClient: Client, message: str):
-        CLIENTS[fromClient.recvrId].socket.sendall(bytes(message, 'ascii'))
-
+        CLIENTS[fromClient.id].socket.sendall(bytes(message, 'ascii'))
 
                     
 CLIENTS: List[Client] = []
-CLIENT_TYPES = {"bot": Communicator.bot, 
-                "game": Communicator.game
-                }
