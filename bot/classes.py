@@ -51,5 +51,8 @@ class Communicator(metaclass=Singleton):
     def pipe(fromClient: Client, message: str):
         CLIENTS[fromClient.id].socket.sendall(bytes(message, 'ascii'))
 
+    @staticmethod
+    def listen(client: Client):
+        return str(client.socket.recv(2048), 'ascii')
                     
 CLIENTS: List[Client] = []
