@@ -191,8 +191,9 @@ class Grid():
         if GAME.settings["easy_start"]:
             for b in range(-1, 2):
                 for a in range(-1, 2):
-                    if self.contents[y + b][x + a].content != 0:
-                        self.contents[y + b][x + a].content = 0
+                    if 0 <= x + a < GAME.settings["width"] and 0 <= y + b < GAME.settings["height"]:
+                        if self.contents[y + b][x + a].content != 0:
+                            self.contents[y + b][x + a].content = 0
 
         for y in range(GAME.settings["height"]):
             for x in range(GAME.settings["width"]):
