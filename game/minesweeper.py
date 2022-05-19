@@ -326,23 +326,25 @@ class Game():
                     data = str(s.recv(2048), "ascii").split(maxsplit=1)
                     if not data:
                         break
+                    
+                    match data[0]:
 
-                    if data[0] == "say":
-                        print(data[1])
-                        s.sendall(b'aquired by client')
+                        case "say":
+                            print(data[1])
+                            s.sendall(b'aquired by client')
 
-                    if data[0] == "client":
-                        if int(data[1]) == myId:
-                            s.sendall(bytes('Successfully Connected to Client %s' % (myId), 'ascii'))
+                        case"client":
+                            if int(data[1]) == myId:
+                                s.sendall(bytes('Successfully Connected to Client %s' % (myId), 'ascii'))
 
-                    if data[0] == "reveal":
-                        data = data[1].split()
-                        GAME.reveal(int(data[0]), int(data[1]))
+                        case "reveal":
+                            data = data[1].split()
+                            GAME.reveal(int(data[0]), int(data[1]))
 
-                    if data[0] == "setting":
-                        data = data[1].split()
-                        GAME.settings[data[0]] = int(data[1])
-                        GAME.restart()
+                        case "setting":
+                            data = data[1].split()
+                            GAME.settings[data[0]] = int(data[1])
+                            GAME.restart()
 
 
                 except Exception as e:
