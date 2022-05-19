@@ -319,25 +319,33 @@ class Game():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
             s.sendall(b'minesweeper')
-            print(str(s.recv(2048), "ascii"))
+            data = str(s.recv(2048), "ascii")
+            print(data)
+            myId = int(data.split()[-1])
             while self.runing:
                 try:
-                    data = str(s.recv(2048), "ascii")
+                    data = str(s.recv(2048), "ascii").split(maxsplit=1)
                     if not data:
                         break
+                    
+                    match data[0]:
 
-                    if data.startswith("say"):
-                        print(data[4:])
-                        s.sendall(b'aquired by client')
+                        case "say":
+                            print(data[1])
+                            s.sendall(b'aquired by client')
 
-                    if data.startswith("reveal"):
-                        data = data.split()
-                        GAME.reveal(int(data[1]), int(data[2]))
+                        case"client":
+                            if int(data[1]) == myId:
+                                s.sendall(bytes('Successfully Connected to Client %s' % (myId), 'ascii'))
 
-                    if data.startswith("setting"):
-                        data = data.split()
-                        GAME.settings[data[1]] = int(data[2])
-                        GAME.restart()
+                        case "reveal":
+                            data = data[1].split()
+                            GAME.reveal(int(data[0]), int(data[1]))
+
+                        case "setting":
+                            data = data[1].split()
+                            GAME.settings[data[0]] = int(data[1])
+                            GAME.restart()
 
 
                 except Exception as e:

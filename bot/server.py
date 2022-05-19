@@ -25,16 +25,15 @@ def inputListener():
 
     comm = Communicator()
     while True:
-        inp = input()
-        if inp != "quit":
-
-            if inp.startswith("client"):
-                inp = inp.split()
+        inp = input().split(maxsplit=1)
+        if inp[0] != "quit":
+            if inp[0] == "client":
                 RECVR = CLIENTS[int(inp[1])]
-                print("Now communicating with client", inp[1])
+            
+            if RECVR is not None:
+                comm.pipe(RECVR, inp[0] + " " + inp[1])
             else:
-                comm.pipe(RECVR, inp)
-
+                print("Can't execute command as no client was chosen")
         else:
             ServerSideSocket.close()
             break
@@ -42,12 +41,14 @@ def inputListener():
 
 def mineSweeper(client: Client):
 
+    comm = Communicator()
     with client.socket:
         while True:
-            data = str(client.socket.recv(2048), 'ascii')
+            data = comm.listen(client)
             print(data)
             if not data:
                 break
+        print("Broke")
 
 
 def snake():
@@ -65,12 +66,11 @@ with ServerSideSocket:
         print('Connected to: ' + address[0] + ':' + str(address[1]))
         client = Client(num_of_threads, str(
             clientconn.recv(2048), 'ascii'), clientconn)
-        client.socket.sendall(bytes('Server recognizes you as %s' % client.type, 'ascii'))
+        client.socket.sendall(bytes('Server recognizes you as %s %s' % (client.type, client.id), 'ascii'))
         threading.Thread(target=CLIENT_TYPES[client.type], args=(client,)).start()
         print("%s is connected & handled by thread %s" %
               (client.type, client.id))
         CLIENTS.append(client)
-        print('Thread Number:', num_of_threads)
         num_of_threads += 1
 
 
