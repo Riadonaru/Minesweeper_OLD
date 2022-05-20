@@ -41,6 +41,8 @@ def inputListener():
 
 def mineSweeper(client: Client):
 
+    global NUM_OF_THREADS
+
     comm = Communicator()
     with client.socket:
         while True:
@@ -48,7 +50,9 @@ def mineSweeper(client: Client):
             print(data)
             if not data:
                 break
-        print("Broke")
+
+        del CLIENTS[client.id]
+        NUM_OF_THREADS -= 1
 
 
 def snake():
@@ -58,19 +62,21 @@ CLIENT_TYPES: Dict[str, callable] = {"minesweeper": mineSweeper,
                                      "snake": snake
                                      }
 
-num_of_threads = 0
+NUM_OF_THREADS = 0
 threading.Thread(target=inputListener).start()
 with ServerSideSocket:
     while True:
         clientconn, address = ServerSideSocket.accept()
         print('Connected to: ' + address[0] + ':' + str(address[1]))
-        client = Client(num_of_threads, str(
+        client = Client(NUM_OF_THREADS, str(
             clientconn.recv(2048), 'ascii'), clientconn)
         client.socket.sendall(bytes('Server recognizes you as %s %s' % (client.type, client.id), 'ascii'))
+        if NUM_OF_THREADS == 0:
+            RECVR = client
         threading.Thread(target=CLIENT_TYPES[client.type], args=(client,)).start()
         print("%s is connected & handled by thread %s" %
               (client.type, client.id))
         CLIENTS.append(client)
-        num_of_threads += 1
+        NUM_OF_THREADS += 1
 
 

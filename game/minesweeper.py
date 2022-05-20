@@ -28,6 +28,7 @@ NOMINE_SPR = pygame.image.load(PATH + "nomine.png")
 
 BG_COLOR = (192, 192, 192)
 
+INPUT_SOURCE: str = "server"
 
 class Cell():
 
@@ -176,32 +177,34 @@ class Grid():
             x (int, optional): The x location for a safe start. Defaults to None.
             y (int, optional): The y location for a safe start. Defaults to None.
         """
-        arr = np.array([Cell for _ in range(self.overall_tiles)])
+        if not self.contents[y][x].flagged:
 
-        for i in range(self.overall_tiles):
-            if i < self.num_of_mines:
-                arr[i] = Cell(-1)
-            else:
-                arr[i] = Cell()
+            arr = np.array([Cell for _ in range(self.overall_tiles)])
 
-        np.random.shuffle(arr)
-        self.contents: List[List[Cell]] = list(
-            arr.reshape(GAME.settings["height"], GAME.settings["width"]))
+            for i in range(self.overall_tiles):
+                if i < self.num_of_mines:
+                    arr[i] = Cell(-1)
+                else:
+                    arr[i] = Cell()
 
-        if GAME.settings["easy_start"]:
-            for b in range(-1, 2):
-                for a in range(-1, 2):
-                    if 0 <= x + a < GAME.settings["width"] and 0 <= y + b < GAME.settings["height"]:
-                        if self.contents[y + b][x + a].content != 0:
-                            self.contents[y + b][x + a].content = 0
+            np.random.shuffle(arr)
+            self.contents: List[List[Cell]] = list(
+                arr.reshape(GAME.settings["height"], GAME.settings["width"]))
 
-        for y in range(GAME.settings["height"]):
-            for x in range(GAME.settings["width"]):
-                self.contents[y][x].x_pos = x
-                self.contents[y][x].y_pos = y
-                self.contents[y][x].content = self.checkAdjMines(x, y)
+            if GAME.settings["easy_start"]:
+                for b in range(-1, 2):
+                    for a in range(-1, 2):
+                        if 0 <= x + a < GAME.settings["width"] and 0 <= y + b < GAME.settings["height"]:
+                            if self.contents[y + b][x + a].content != 0:
+                                self.contents[y + b][x + a].content = 0
 
-        self.contents_created = True
+            for y in range(GAME.settings["height"]):
+                for x in range(GAME.settings["width"]):
+                    self.contents[y][x].x_pos = x
+                    self.contents[y][x].y_pos = y
+                    self.contents[y][x].content = self.checkAdjMines(x, y)
+
+            self.contents_created = True
 
     def checkAdjMines(self, x_index: int, y_index: int) -> int:
         """Returns the number of adjacent mines to the cell at the given index.
@@ -239,7 +242,8 @@ class Game():
             "width": 20,
             "height": 25,
             "mines": 25,  # Percentage
-            "open_for_clients": True,
+            "allow_command_input": True,
+            "input_source": "client", # Valid entries are either "client" or "server"
             # Size of one cell (WARNING: make sure to change the images dimension as well)
             "cell_size": 32,
             "top_border_size": 100,  # Size of top border
@@ -312,44 +316,96 @@ class Game():
 
         pygame.quit()
 
-
-    def client(self):
-
-
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    def connectToServer(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((HOST, PORT))
             s.sendall(b'minesweeper')
             data = str(s.recv(2048), "ascii")
             print(data)
-            myId = int(data.split()[-1])
-            while self.runing:
-                try:
-                    data = str(s.recv(2048), "ascii").split(maxsplit=1)
-                    if not data:
-                        break
-                    
-                    match data[0]:
+            return s, int(data.split()[-1])
+        except:
+            print("Error in GAME.connectToServer()")
+            s.close()
 
-                        case "say":
-                            print(data[1])
+    def client(self):
+
+        global INPUT_SOURCE
+        
+        s: socket.socket = None
+        myId: int = None
+        try:
+            while self.runing:
+                INPUT_SOURCE = self.settings["input_source"]
+
+                if INPUT_SOURCE == "client":
+                    data = input()
+                elif INPUT_SOURCE == "server":
+                    if s is None or myId is None:
+                        try:
+                            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            s.connect((HOST, PORT))
+                            s.sendall(b'minesweeper')
+                            data = str(s.recv(2048), "ascii")
+                            print(data)
+                            myId = int(data.split()[-1])
+                        except:
+                            print("Error trying to connect to the server")
+                            s.close()
+                    data = str(s.recv(2048), "ascii")
+                
+                data = data.split(maxsplit=1)
+
+                if not data:
+                    break
+                
+                match data[0]:
+
+                    case "say":
+                        print(data[1])
+                        if INPUT_SOURCE == "server":
                             s.sendall(b'aquired by client')
 
-                        case"client":
-                            if int(data[1]) == myId:
-                                s.sendall(bytes('Successfully Connected to Client %s' % (myId), 'ascii'))
+                    case"client":
+                        if int(data[1]) == myId:
+                            s.sendall(bytes('Successfully Connected to Client %s' % (myId), 'ascii'))
 
-                        case "reveal":
-                            data = data[1].split()
-                            GAME.reveal(int(data[0]), int(data[1]))
+                    case "reveal":
+                        data = data[1].split()
+                        GAME.reveal(int(data[0]), int(data[1]))
 
-                        case "setting":
-                            data = data[1].split()
-                            GAME.settings[data[0]] = int(data[1])
-                            GAME.restart()
+                    case "setting":
+                        data = data[1].split()
+                        match str(type(GAME.settings[data[0]])):
+                            
+                            case "<class 'bool'>":
+                                if data[1] == "True":
+                                    GAME.settings[data[0]] = True
+                                elif data[1] == "False":
+                                    GAME.settings[data[0]] = False
+                                else:
+                                    s.sendall(bytes(data[1] + " is not a valid entry!", 'ascii'))
+                            
+                            case "<class 'int'>":
+                                GAME.settings[data[0]] = int(data[1])
 
+                            case "<class 'str'>":
+                                GAME.settings[data[0]] = str(data[1])
 
-                except Exception as e:
-                    print(e)
+                        GAME.restart()
+
+                    case "flag":
+                        data = data[1].split()
+                        GAME.flag(int(data[0]), int(data[1]))
+
+                    case "reset":
+                        GAME.restart()
+
+        except Exception as e:
+            print(e)
+        finally:
+            if s is not None:
+                s.close()
 
 
     def play(self):
@@ -365,11 +421,15 @@ class Game():
         pygame.display.set_caption("Minesweeper")
         
         self.grid = Grid()
-        self.drawThread.start()
-        self.clientThread.start()
-        if self.settings["open_for_clients"]:
-            pass
-        # TODO
+        if not self.drawThread.is_alive():
+            self.drawThread.start()
+
+        if not self.clientThread.is_alive():
+            if self.settings["allow_command_input"]:
+                self.clientThread.start()
+        
+
+
     def reveal(self, x: int, y: int):
         if not self.grid.contents_created:
             self.grid.createLayout(x, y)
