@@ -1,4 +1,3 @@
-import json
 import threading
 from typing import List, Set
 
@@ -31,9 +30,18 @@ SETTINGS_SPR = 14
 
 FLAGGED_CELLS: int = 0
 
-with open(PATH[:-6] + "settings.json", "r") as stngs:
-    DEFAULT_SETTINGS = json.loads(stngs.read())
-
+DEFAULT_SETTINGS = {
+            "easy_start": True,
+            "width": 20,
+            "height": 25,
+            "mines": 25,  # Percentage
+            "play_sounds": False,
+            "allow_command_input": True,
+            "input_source": "client", # Valid entries are either "client" or "server"
+            "cell_size": 32, # Size of one cell in pixels. (WARNING: make sure to change the images dimension as well)
+            "top_border_size": 100,  # Size of top border
+            "lrb_border_size": 16,  # ize of Left, Right & Bottom borders.
+        }
 
 class Cell():
 
@@ -311,39 +319,9 @@ class Game():
         self.grid.contents[y][x].revealCell()
 
 
-    def restart(self):
-        """Resets the given Game.
-
-        Args:
-            game (Minesweeper.Game): The game which we are trying to reset
-        """
-        global RESTART_SPR
-
-        RESTART_SPR = 10
-        self.grid = Grid()
-        self.condition = 1
-        self.play()
-
-
-    def setSettings(self):
-        """This method writes the current settings configuration into settings.json in a readable format.
-        """
-
-        with open(PATH[:-6] + "settings.json", "w") as stngs:
-            settings = json.dumps(self.settings).split(", ")
-            stngs.write("{\n")
-            stngs.write("    " + settings[0][1:] + ",\n")
-            stngs.writelines(["    " + settings[i] + ",\n" for i in range(1, len(settings) - 1)])
-            stngs.write("    " + settings[len(settings) - 1][:-1] + "\n")
-            stngs.write("}")
-
-        self.restart()
-        
-
     def play(self):
         """Init & Create the display, the grid and starts the relevant Threads.
         """
-        self.running = True
         self.disp_width = self.settings["cell_size"] * self.settings["width"] + \
             self.settings["lrb_border_size"] * 2  # Display width
         self.disp_height = self.settings["cell_size"] * self.settings["height"] + \

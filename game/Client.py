@@ -1,6 +1,4 @@
-import json
 import socket
-from turtle import st
 
 import Minesweeper
 
@@ -71,8 +69,8 @@ def client(game: Minesweeper.Game):
 
                         case "<class 'str'>":
                             game.settings[data[0]] = str(data[1])
-                    
-                    game.setSettings()
+
+                    game.restart()
 
                 case "flag":
                     data = data[1].split()
