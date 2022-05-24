@@ -112,7 +112,7 @@ class Cell():
                 SPR_LIST[self.content], self.rect)
 
     def revealCell(self):
-        """This method Reveals a cell and checks
+        """This method has the reveal algo.
         """
 
         global RESTART_SPR
@@ -268,39 +268,12 @@ class Game():
             self.restart_pos = self.settings["width"] / 2
 
 
-    def play(self):
-        
-        self.disp_width = self.settings["cell_size"] * self.settings["width"] + \
-            self.settings["lrb_border_size"] * 2  # Display width
-        self.disp_height = self.settings["cell_size"] * self.settings["height"] + \
-            self.settings["lrb_border_size"] + \
-            self.settings["top_border_size"]  # Display height
-
-        self.gameDisplay = pygame.display.set_mode(
-            (self.disp_width, self.disp_height))  # Create display
-        pygame.display.set_caption("Minesweeper")
-        
-        self.grid = Grid()
-        if self.drawThread is not None and not self.drawThread.is_alive():
-            self.drawThread.start()
-
-        if  self.clientThread is not None and not self.clientThread.is_alive():
-            if self.settings["allow_command_input"]:
-                self.clientThread.start()
-        
-
-
-    def reveal(self, x: int, y: int):
-        if not self.grid.contents_created:
-            self.grid.createLayout(x, y)
-        self.grid.contents[y][x].revealCell()
-
-
     def flag(self, x: int, y: int):
-        """Toggles the flagging option.
+        """This method Flags/Unflags the cell at the given coordinates.
 
         Args:
-            event (pygame.event.Event): The event that caused the function to fire.
+            x (int): The x coordinate of the cell to flag.
+            y (int): The y coordinate of the cell to
         """
 
         global FLAGGED_CELLS, RESTART_SPR
@@ -333,5 +306,39 @@ class Game():
                             cell.hidden = False
                 self.condition = 0
 
+
+    def reveal(self, x: int, y: int):
+        """This method reveals the cell at the given coordinates if possible.
+
+        Args:
+            x (int): The x coordinate of the cell.
+            y (int): The y coordinate of the cell.
+        """
+        if not self.grid.contents_created:
+            self.grid.createLayout(x, y)
+        self.grid.contents[y][x].revealCell()
+
+
+    def play(self):
+        """Init & Create the display, the grid and starts the relevant Threads.
+        """
+        self.disp_width = self.settings["cell_size"] * self.settings["width"] + \
+            self.settings["lrb_border_size"] * 2  # Display width
+        self.disp_height = self.settings["cell_size"] * self.settings["height"] + \
+            self.settings["lrb_border_size"] + \
+            self.settings["top_border_size"]  # Display height
+
+        self.gameDisplay = pygame.display.set_mode(
+            (self.disp_width, self.disp_height))  # Create display
+        pygame.display.set_caption("Minesweeper")
+        
+        self.grid = Grid()
+        if self.drawThread is not None and not self.drawThread.is_alive():
+            self.drawThread.start()
+
+        if  self.clientThread is not None and not self.clientThread.is_alive():
+            if self.settings["allow_command_input"]:
+                self.clientThread.start()
+        
 
 GAME = Game()
