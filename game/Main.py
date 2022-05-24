@@ -59,7 +59,8 @@ def findAffectedCell(game: Minesweeper.Game, event: pygame.event.Event):
             actions[event.button](x, y)
 
     if round(x) == round(game.restart_pos[0]) and floor(y) == game.restart_pos[1]:
-        restart(game)
+        game.restart()
+
 
 
 def highlightCell(game: Minesweeper.Game, event: pygame.event.Event):
@@ -90,18 +91,6 @@ def initThreads(game: Minesweeper.Game):
     game.drawThread = threading.Thread(target=gameLoop, args=(game,))
 
 
-def restart(game: Minesweeper.Game):
-    """Resets the given Game.
-
-    Args:
-        game (Minesweeper.Game): The game which we are trying to reset
-    """
-    Minesweeper.RESTART_SPR = 10
-    game.grid = Minesweeper.Grid()
-    game.condition = 1
-    game.play()
-
-
 def exit(game: Minesweeper.Game, event: pygame.event.Event):
     """Exits the given Game.
 
@@ -110,6 +99,13 @@ def exit(game: Minesweeper.Game, event: pygame.event.Event):
         event (pygame.event.Event): The event that caused the need to exit.
     """
     game.runing = False
+
+
+def hardReset():
+    Minesweeper.GAME.runing = False
+    Minesweeper.GAME = Minesweeper.Game()
+    initThreads(Minesweeper.GAME)
+    Minesweeper.GAME.play()
 
 
 EVENT_TYPES = {
