@@ -1,7 +1,4 @@
-import socket
-from telnetlib import GA
 import threading
-from math import floor
 from typing import List, Set
 
 import numpy as np
@@ -10,9 +7,6 @@ from playsound import playsound
 
 pygame.init()
 
-
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 65432  # The port used by the server
 
 PATH = __file__[:-14] + "files/"
 IMAGE_NAMES = ["empty", "cell1", "cell2", "cell3", "cell4",
@@ -25,10 +19,29 @@ FLAG_SPR = pygame.image.load(PATH + "flag.png")
 CELL_SPR = pygame.image.load(PATH + "cell.png")
 CLICKEDMINE_SPR = pygame.image.load(PATH + "clicked_mine.png")
 NOMINE_SPR = pygame.image.load(PATH + "nomine.png")
+GAME_STATE_IMAGES = [pygame.image.load(PATH + "%s.png" % name) for name in ("win", "game_over")]
 
 BG_COLOR = (192, 192, 192)
 
 INPUT_SOURCE: str = "server"
+
+RESTART_SPR: int = 10
+SETTINGS_SPR = 14
+
+FLAGGED_CELLS: int = 0
+
+DEFAULT_SETTINGS = {
+            "easy_start": True,
+            "width": 20,
+            "height": 25,
+            "mines": 25,  # Percentage
+            "play_sounds": False,
+            "allow_command_input": True,
+            "input_source": "client", # Valid entries are either "client" or "server"
+            "cell_size": 32, # Size of one cell in pixels. (WARNING: make sure to change the images dimension as well)
+            "top_border_size": 100,  # Size of top border
+            "lrb_border_size": 16,  # ize of Left, Right & Bottom borders.
+        }
 
 class Cell():
 
@@ -49,7 +62,8 @@ class Cell():
         if self.flagged:
             raise Exception("Can't dehide a flagged cell")
         elif self.content == -1:
-            # threading.Thread(target=playsound, args=(PATH + "game-over.mp3",)).start()
+            if GAME.settings["play_sounds"]:
+                threading.Thread(target=playsound, args=(PATH + "game-over.mp3",)).start()
             for list in GAME.grid.contents:
                 for cell in list:
                     if not cell.flagged:
@@ -100,11 +114,16 @@ class Cell():
     def revealCell(self):
         """This method Reveals a cell and checks
         """
+
+        global RESTART_SPR
+
         try:
             self.hidden = False    
             if self.content == -1:
+                GAME.restart_button.content = 13
+                RESTART_SPR = 13
                 self.content = 9
-                GAME.playing = False
+                GAME.condition = -1
                 return
 
             cells_to_check: Set[Cell] = {self}
@@ -235,177 +254,18 @@ class Game():
 
     def __init__(self) -> None:
         self.runing = True
-        self.playing = True
+        self.condition = 1 # 0 for win, 1 for playing, -1 for lose.
         self.flagging = False
-        self.settings = {
-            "easy_start": True,
-            "width": 20,
-            "height": 25,
-            "mines": 25,  # Percentage
-            "allow_command_input": True,
-            "input_source": "client", # Valid entries are either "client" or "server"
-            # Size of one cell (WARNING: make sure to change the images dimension as well)
-            "cell_size": 32,
-            "top_border_size": 100,  # Size of top border
-            "lrb_border_size": 16,  # Left, Right, Bottom border
-        }
-        self.settings_button = Cell(14, False)
-        self.restart_button = Cell(10, False)
+        self.settings = DEFAULT_SETTINGS
+        self.settings_button = Cell(SETTINGS_SPR, False)
+        self.restart_button = Cell(RESTART_SPR, False)
         self.settings_pos = (self.settings["width"] - 0.75, -2.75)
-        self.drawThread = threading.Thread(target=self.gameLoop)
-        self.clientThread = threading.Thread(target=self.client)
+        self.drawThread: threading.Thread = None
+        self.clientThread: threading.Thread = None
         if self.settings["width"] % 2 == 0:
             self.restart_pos = (self.settings["width"] / 2 - 0.5, -2)
         else:
             self.restart_pos = self.settings["width"] / 2
-
-
-    def highlightCell(self, event: pygame.event.Event):
-        x = (event.pos[0] - self.settings["lrb_border_size"]) / \
-            self.settings["cell_size"]
-        y = (event.pos[1] - self.settings["top_border_size"]) / \
-            self.settings["cell_size"]
-        if round(x) == round(self.restart_pos[0]) and floor(y) == self.restart_pos[1]:
-            self.restart_button.content = 11
-        elif self.restart_button.content != 10:
-            self.restart_button.content = 10
-
-
-    def findAffectedCell(self, event: pygame.event.Event = None):
-        """Reacts to player left click
-
-        Args:
-            event (pygame.event.Event): The event that caused the function to fire.
-        """
-        x = (event.pos[0] - self.settings["lrb_border_size"]) / \
-            self.settings["cell_size"]
-        y = (event.pos[1] - self.settings["top_border_size"]) / \
-            self.settings["cell_size"]
-        if self.playing:
-            if self.settings["top_border_size"] < event.pos[1] < self.disp_height - self.settings["lrb_border_size"] and self.settings["lrb_border_size"] < event.pos[0] < self.disp_width - self.settings["lrb_border_size"]:
-                x = floor(x)
-                y = floor(y)
-                actions = {1: self.reveal,
-                        3: self.flag,
-                        }
-                actions[event.button](x, y)
-
-        if round(x) == round(self.restart_pos[0]) and floor(y) == self.restart_pos[1]:
-            self.restart()
-
-    def gameLoop(self):
-
-        while self.runing:
-
-            GAME.gameDisplay.fill(BG_COLOR)
-            for y in range(GAME.settings["height"]):
-                for x in range(GAME.settings["width"]):
-                    self.grid.contents[y][x].drawCell(x, y)
-
-            self.settings_button.drawCell(
-                self.settings_pos[0], self.settings_pos[1])
-            self.restart_button.drawCell(
-                self.restart_pos[0], self.restart_pos[1])
-
-            pygame.display.update()
-            for event in pygame.event.get():
-                try:
-                    Game.event_types[event.type](self, event)
-                except Exception as e:
-                    pass
-
-        pygame.quit()
-
-    def connectToServer(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((HOST, PORT))
-            s.sendall(b'minesweeper')
-            data = str(s.recv(2048), "ascii")
-            print(data)
-            return s, int(data.split()[-1])
-        except:
-            print("Error in GAME.connectToServer()")
-            s.close()
-
-    def client(self):
-
-        global INPUT_SOURCE
-        
-        s: socket.socket = None
-        myId: int = None
-        try:
-            while self.runing:
-                INPUT_SOURCE = self.settings["input_source"]
-
-                if INPUT_SOURCE == "client":
-                    data = input()
-                elif INPUT_SOURCE == "server":
-                    if s is None or myId is None:
-                        try:
-                            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                            s.connect((HOST, PORT))
-                            s.sendall(b'minesweeper')
-                            data = str(s.recv(2048), "ascii")
-                            print(data)
-                            myId = int(data.split()[-1])
-                        except:
-                            print("Error trying to connect to the server")
-                            s.close()
-                    data = str(s.recv(2048), "ascii")
-                
-                data = data.split(maxsplit=1)
-
-                if not data:
-                    break
-                
-                match data[0]:
-
-                    case "say":
-                        print(data[1])
-                        if INPUT_SOURCE == "server":
-                            s.sendall(b'aquired by client')
-
-                    case"client":
-                        if int(data[1]) == myId:
-                            s.sendall(bytes('Successfully Connected to Client %s' % (myId), 'ascii'))
-
-                    case "reveal":
-                        data = data[1].split()
-                        GAME.reveal(int(data[0]), int(data[1]))
-
-                    case "setting":
-                        data = data[1].split()
-                        match str(type(GAME.settings[data[0]])):
-                            
-                            case "<class 'bool'>":
-                                if data[1] == "True":
-                                    GAME.settings[data[0]] = True
-                                elif data[1] == "False":
-                                    GAME.settings[data[0]] = False
-                                else:
-                                    s.sendall(bytes(data[1] + " is not a valid entry!", 'ascii'))
-                            
-                            case "<class 'int'>":
-                                GAME.settings[data[0]] = int(data[1])
-
-                            case "<class 'str'>":
-                                GAME.settings[data[0]] = str(data[1])
-
-                        GAME.restart()
-
-                    case "flag":
-                        data = data[1].split()
-                        GAME.flag(int(data[0]), int(data[1]))
-
-                    case "reset":
-                        GAME.restart()
-
-        except Exception as e:
-            print(e)
-        finally:
-            if s is not None:
-                s.close()
 
 
     def play(self):
@@ -421,10 +281,10 @@ class Game():
         pygame.display.set_caption("Minesweeper")
         
         self.grid = Grid()
-        if not self.drawThread.is_alive():
+        if self.drawThread is not None and not self.drawThread.is_alive():
             self.drawThread.start()
 
-        if not self.clientThread.is_alive():
+        if  self.clientThread is not None and not self.clientThread.is_alive():
             if self.settings["allow_command_input"]:
                 self.clientThread.start()
         
@@ -442,32 +302,36 @@ class Game():
         Args:
             event (pygame.event.Event): The event that caused the function to fire.
         """
+
+        global FLAGGED_CELLS, RESTART_SPR
+
         if self.grid.contents[y][x].flagged:
             self.grid.contents[y][x].flagged = False
+            FLAGGED_CELLS -= 1
         else:
             self.grid.contents[y][x].flagged = True
+            FLAGGED_CELLS += 1
 
+        if FLAGGED_CELLS == self.grid.num_of_mines:
+            b = False
+            for list in self.grid.contents:
+                for cell in list:
+                    if cell.content == -1 and not cell.flagged:
+                        b = True
+                        break
 
-    def restart(self):
-        self.grid = Grid()
-        self.playing = True
-        self.play()
+                if b:
+                    break
 
+            else:
+                FLAGGED_CELLS = 0
+                RESTART_SPR = 12
+                self.restart_button.content = 12
+                for list in self.grid.contents:
+                    for cell in list:
+                        if cell.content != -1:
+                            cell.hidden = False
+                self.condition = 0
 
-
-    def exit(self, event: pygame.event.Event):
-        """Exits the game
-        """
-        self.runing = False
-
-
-
-
-    event_types = {
-        pygame.MOUSEBUTTONDOWN: findAffectedCell,
-        pygame.MOUSEMOTION: highlightCell,
-        pygame.QUIT: exit
-    }
 
 GAME = Game()
-GAME.play()

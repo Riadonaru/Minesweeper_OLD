@@ -1,12 +1,10 @@
-from concurrent.futures import thread
 import socket
 import threading
-from typing import Dict, List
-from xmlrpc.client import Server
+from typing import Dict
 
 from classes import CLIENTS, Communicator, Client
 
-HOST = '127.0.0.1'
+HOST = '10.100.102.24'
 PORT = 65432
 RECVR: Client = None
 
