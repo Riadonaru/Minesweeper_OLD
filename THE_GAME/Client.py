@@ -2,13 +2,13 @@ import json
 import socket
 from turtle import st
 
-import Minesweeper
+import globals
 
 HOST = "10.100.102.24"  # The server's hostname or IP address
 PORT = 65432  # The port used by the server
 
 
-def client(game: Minesweeper.Game):
+def client(game):
 
     global INPUT_SOURCE, SETTINGS_SPR
     
