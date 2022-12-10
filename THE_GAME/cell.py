@@ -1,7 +1,7 @@
 import pygame
 
-from globals import (CELL_SPR, DEFAULT_SETTINGS, DISP, FLAG_SPR,
-                     SPR_LIST)
+from globals import (CELL_EDGE, DEFAULT_SETTINGS, DISP, FLAG, CELL, LRB_BORDER, TOP_BORDER)
+from sprites import SPRITES
 
 
 class Cell():
@@ -10,8 +10,8 @@ class Cell():
         self.__hidden: bool = hidden
         self.__flagged: bool = False
         self.__content: int = value
-        self.x_pos: int = x
-        self.y_pos: int = y
+        self.x: int = x
+        self.y: int = y
 
     @property
     def hidden(self) -> bool:
@@ -36,23 +36,19 @@ class Cell():
             print("Can't flag a revealed cell")
 
     @property
-    def content(self) -> int:
+    def value(self) -> int:
         return self.__content
 
-    @content.setter
-    def content(self, __value) -> None:
+    @value.setter
+    def value(self, __value) -> None:
         self.__content = __value
 
-    def drawCell(self) -> None:
+    def draw(self) -> None:
         """This method draws a cell onto the display
         """
-        self.rect = pygame.Rect(DEFAULT_SETTINGS["lrb_border_size"] + self.x_pos * DEFAULT_SETTINGS["cell_size"],
-                                DEFAULT_SETTINGS["top_border_size"] + self.y_pos * DEFAULT_SETTINGS["cell_size"], DEFAULT_SETTINGS["cell_size"], DEFAULT_SETTINGS["cell_size"])
+        self.rect = pygame.Rect(LRB_BORDER + self.x * CELL_EDGE,
+                                TOP_BORDER + self.y * CELL_EDGE, CELL_EDGE, CELL_EDGE)
         if self.hidden:
-            if self.flagged:
-                DISP.blit(FLAG_SPR, self.rect)
-            else:
-                DISP.blit(CELL_SPR, self.rect)
+            DISP.blit(SPRITES[FLAG if self.flagged else CELL], self.rect)
         else:
-            DISP.blit(
-                SPR_LIST[self.content], self.rect)
+            DISP.blit(SPRITES[self.value], self.rect)
