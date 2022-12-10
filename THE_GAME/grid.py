@@ -17,7 +17,7 @@ class Grid():
         self.contents_created: bool = False
         self.tiles = SETTINGS["width"] * SETTINGS["height"]
         self.mines = int(self.tiles * SETTINGS["mines"] / 100)
-        self.contents: np.ndarray = np.array([Cell(x, y) for x in range(
+        self.contents: np.ndarray = np.array([Cell(x, y, create_hitbox=True) for x in range(
             SETTINGS["width"]) for y in range(SETTINGS["height"])])
         self.contents = np.reshape(
             self.contents, (SETTINGS["height"], SETTINGS["width"]), 'F')
@@ -54,6 +54,7 @@ class Grid():
                 for x in range(SETTINGS["width"]):
                     self.contents[y][x].x = x
                     self.contents[y][x].y = y
+                    self.contents[y][x].create_hitbox()
                     self.contents[y][x].value = self.assign_value(x, y)
 
             self.contents_created = True
@@ -85,41 +86,36 @@ class Grid():
     def reveal_next(self, x: int, y: int):
         """This method has the reveal algo.
         """
-        global RESTART_SPR
+        cell = self.contents[y][x]
+        if cell.value == MINE:
+            cell.value = CLICKED_MINE
+            self.state = LOSE
+            if SETTINGS["play_sounds"]:
+                threading.Thread(target=playsound, args=(
+                    PATH + "game-over.mp3",)).start()
 
-        try:
-            cell = self.contents[y][x]
-            if cell.value == MINE:
-                cell.value = CLICKED_MINE
-                self.state = LOSE
-                RESTART_SPR = DEAD
-                if SETTINGS["play_sounds"]:
-                    threading.Thread(target=playsound, args=(
-                        PATH + "game-over.mp3",)).start()
+            for list in self.contents:
+                for cell in list:
+                    if not cell.flagged:
+                        cell.hidden = False
+                    elif cell.value != MINE:
+                        cell.value = NOMINE
+                        cell.flagged = False
+                        cell.hidden = False
 
-                for list in self.contents:
-                    for cell in list:
-                        if not cell.flagged:
-                            cell.hidden = False
-                        elif cell.value != MINE:
-                            cell.value = NOMINE
-                            cell.flagged = False
-                            cell.hidden = False
+            return -1
 
-                return -1
+        if not self.check_cell(cell.x, cell.y):
+            cell.hidden = False
+            if self.check_saturation(cell.x, cell.y):
+                for y in range(-1, 2):
+                    for x in range(-1, 2):
+                        if 0 <= cell.x + x < SETTINGS["width"] and 0 <= cell.y + y < SETTINGS["height"]:
+                            adj_cell = self.contents[cell.y +
+                                                        y][cell.x + x]
+                            if not adj_cell.flagged:
+                                self.reveal_next(adj_cell.x, adj_cell.y)
 
-            if not self.check_cell(cell.x, cell.y):
-                cell.hidden = False
-                if self.check_saturation(cell.x, cell.y):
-                    for y in range(-1, 2):
-                        for x in range(-1, 2):
-                            if 0 <= cell.x + x < SETTINGS["width"] and 0 <= cell.y + y < SETTINGS["height"]:
-                                adj_cell = self.contents[cell.y +
-                                                         y][cell.x + x]
-                                if not adj_cell.flagged:
-                                    self.reveal_next(adj_cell.x, adj_cell.y)
-        except Exception as e:
-            raise Exception(e)
 
     def check_saturation(self, x: int, y: int) -> bool:
         """This method checks if there are as much flags around a cell as the number on it.

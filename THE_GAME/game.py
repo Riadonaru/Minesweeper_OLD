@@ -21,12 +21,10 @@ class Game():
         self.runing = True
         self.flagging = False
         self.flagged_cells = 0
-        self.settings_btn = Cell(SETTINGS["width"] - 0.75, -2.75, GEAR, False)
-        if SETTINGS["width"] % 2 == 0:
-            self.reset_btn = Cell(
-                SETTINGS["width"] / 2 - 0.5, -2, RESET, False)
-        else:
-            self.reset_btn = Cell(RESET, SETTINGS["width"] / 2, -2, False)
+        self.settings_btn = Cell(SETTINGS["width"] - 0.75, -2.75, value=GEAR, hidden=False, create_hitbox=True)
+        self.reset_btn = Cell(SETTINGS["width"] / 2 - 0.5, -2, value=RESET, hidden=False, create_hitbox=True)
+        self.settings_btn.create_hitbox()
+        self.reset_btn.create_hitbox()
         self.clientThread: threading.Thread = None
         if SETTINGS["allow_command_input"]:
             self.clientThread = threading.Thread(target=client, args=(self,))
@@ -43,9 +41,8 @@ class Game():
             self.grid.create_layout(x, y)
 
         self.grid.clicked_cell = self.grid.contents[y][x]
-        dead = self.grid.reveal_next(x, y)
-        if dead == -1:
-            self.reset_btn.value = SHOCKED
+        if self.grid.reveal_next(x, y):
+            self.reset_btn.value = DEAD
 
     def flag(self, x: int, y: int):
         """This method Flags/Unflags the cell at the given coordinates.
@@ -117,9 +114,7 @@ class Game():
             game (Minesweeper.Game): The game to react in.
             event (pygame.event.Event): The event associated with the left click.
         """
-        x = (event.pos[0] - LRB_BORDER) / CELL_EDGE
-        y = (event.pos[1] - TOP_BORDER) / CELL_EDGE
-        if round(x) == round(self.reset_btn.x) and floor(y) == self.reset_btn.y:
+        if self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
             self.reset_btn.value = SHOCKED
         elif self.grid.state == LOSE:
             self.reset_btn.value = DEAD
@@ -131,7 +126,7 @@ class Game():
         """
 
         with open(PATH[:-6] + "settings.json", "w") as stngs:
-            settings = json.dumps(self.settings).split(", ")
+            settings = json.dumps(SETTINGS).split(", ")
             stngs.write("{\n")
             stngs.write("    " + settings[0][1:] + ",\n")
             stngs.writelines(
@@ -158,7 +153,6 @@ class Game():
 
         Args:
             game (Minesweeper.Game): The game we are trying to exit.
-            event (pygame.event.Event): The event that caused the need to exit.
         """
         self.runing = False
 
