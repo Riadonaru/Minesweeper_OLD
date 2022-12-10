@@ -5,7 +5,7 @@ import numpy as np
 from playsound import playsound
 
 from cell import Cell
-from globals import CLICKED_MINE, DEAD, DEFAULT_SETTINGS, MINE, NOMINE, PATH
+from globals import CLICKED_MINE, DEAD, LOSE, PLAYING, SETTINGS, MINE, NOMINE, PATH
 
 
 class Grid():
@@ -13,16 +13,14 @@ class Grid():
     clicked_cell: Cell = None
 
     def __init__(self) -> None:
-        self.overall_tiles = DEFAULT_SETTINGS["width"] * \
-            DEFAULT_SETTINGS["height"]
-        self.num_of_mines = int(DEFAULT_SETTINGS["width"] *
-                                DEFAULT_SETTINGS["height"] * DEFAULT_SETTINGS["mines"] / 100)
+        self.state: int = PLAYING  # 1 for playing, 14 for win, 15 for lose.
         self.contents_created: bool = False
+        self.tiles = SETTINGS["width"] * SETTINGS["height"]
+        self.mines = int(self.tiles * SETTINGS["mines"] / 100)
         self.contents: np.ndarray = np.array([Cell(x, y) for x in range(
-            DEFAULT_SETTINGS["width"]) for y in range(DEFAULT_SETTINGS["height"])])
+            SETTINGS["width"]) for y in range(SETTINGS["height"])])
         self.contents = np.reshape(
-            self.contents, (DEFAULT_SETTINGS["height"], DEFAULT_SETTINGS["width"]), 'F')
-        self.state: int = 1  # 1 for playing, 0 for win, -1 for lose.
+            self.contents, (SETTINGS["height"], SETTINGS["width"]), 'F')
 
     def create_layout(self, x: int = None, y: int = None) -> None:
         """Creates the grid layout for the game and stores it in self.contents
@@ -33,27 +31,27 @@ class Grid():
         """
         if not self.contents[y][x].flagged:
 
-            self.contents = np.array([Cell for _ in range(self.overall_tiles)])
+            self.contents = np.array([Cell for _ in range(self.tiles)])
 
-            for i in range(self.overall_tiles):
-                if i < self.num_of_mines:
+            for i in range(self.tiles):
+                if i < self.mines:
                     self.contents[i] = Cell(value=-1)
                 else:
                     self.contents[i] = Cell()
 
             np.random.shuffle(self.contents)
             self.contents: List[List[Cell]] = list(self.contents.reshape(
-                DEFAULT_SETTINGS["height"], DEFAULT_SETTINGS["width"]))
+                SETTINGS["height"], SETTINGS["width"]))
 
-            if DEFAULT_SETTINGS["easy_start"]:
+            if SETTINGS["easy_start"]:
                 for b in range(-1, 2):
                     for a in range(-1, 2):
-                        if 0 <= x + a < DEFAULT_SETTINGS["width"] and 0 <= y + b < DEFAULT_SETTINGS["height"]:
+                        if 0 <= x + a < SETTINGS["width"] and 0 <= y + b < SETTINGS["height"]:
                             if self.contents[y + b][x + a].value != 0:
                                 self.contents[y + b][x + a].value = 0
 
-            for y in range(DEFAULT_SETTINGS["height"]):
-                for x in range(DEFAULT_SETTINGS["width"]):
+            for y in range(SETTINGS["height"]):
+                for x in range(SETTINGS["width"]):
                     self.contents[y][x].x = x
                     self.contents[y][x].y = y
                     self.contents[y][x].value = self.assign_value(x, y)
@@ -75,7 +73,7 @@ class Grid():
             # print("\nNew\n")
             for y in range(-1, 2):
                 for x in range(-1, 2):
-                    if 0 <= x_index + x < DEFAULT_SETTINGS["width"] and 0 <= y_index + y < DEFAULT_SETTINGS["height"]:
+                    if 0 <= x_index + x < SETTINGS["width"] and 0 <= y_index + y < SETTINGS["height"]:
                         if self.contents[y_index + y][x_index + x].value == -1:
                             # print("Mine at:", x_index + x, y_index + y)
                             num_of_adj_mines += 1
@@ -93,9 +91,9 @@ class Grid():
             cell = self.contents[y][x]
             if cell.value == MINE:
                 cell.value = CLICKED_MINE
-                self.state = -1
+                self.state = LOSE
                 RESTART_SPR = DEAD
-                if DEFAULT_SETTINGS["play_sounds"]:
+                if SETTINGS["play_sounds"]:
                     threading.Thread(target=playsound, args=(
                         PATH + "game-over.mp3",)).start()
 
@@ -115,13 +113,13 @@ class Grid():
                 if self.check_saturation(cell.x, cell.y):
                     for y in range(-1, 2):
                         for x in range(-1, 2):
-                            if 0 <= cell.x + x < DEFAULT_SETTINGS["width"] and 0 <= cell.y + y < DEFAULT_SETTINGS["height"]:
-                                adj_cell = self.contents[cell.y + y][cell.x + x]
+                            if 0 <= cell.x + x < SETTINGS["width"] and 0 <= cell.y + y < SETTINGS["height"]:
+                                adj_cell = self.contents[cell.y +
+                                                         y][cell.x + x]
                                 if not adj_cell.flagged:
                                     self.reveal_next(adj_cell.x, adj_cell.y)
         except Exception as e:
             raise Exception(e)
-
 
     def check_saturation(self, x: int, y: int) -> bool:
         """This method checks if there are as much flags around a cell as the number on it.
@@ -135,7 +133,7 @@ class Grid():
         else:
             for a in range(-1, 2):
                 for b in range(-1, 2):
-                    if 0 <= x + a < DEFAULT_SETTINGS["width"] and 0 <= y + b < DEFAULT_SETTINGS["height"]:
+                    if 0 <= x + a < SETTINGS["width"] and 0 <= y + b < SETTINGS["height"]:
                         if self.contents[y + b][x + a].flagged:
                             adj_flags += 1
 

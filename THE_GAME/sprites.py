@@ -1,6 +1,5 @@
 import pygame
-from globals import BG_COLOR, DEFAULT_SETTINGS, PATH
-
+from globals import BG_COLOR, SETTINGS, PATH, DISP, WIN, LOSE
 
 class Spritesheet(object):
 
@@ -8,13 +7,19 @@ class Spritesheet(object):
         self.sheet = pygame.image.load(file).convert_alpha()
 
         
-    def getImage(self, x, width, height, scale: int = 1):
+    def getImage(self, x, y, width, height, scale: int = 1):
         image = pygame.Surface((width, height)).convert_alpha()
         image.fill(BG_COLOR)
-        image.blit(self.sheet, (0, 0), (x * width + 1, 1, width, height))
+        image.blit(self.sheet, (0, 0), (x, y, width, height))
         image = pygame.transform.scale(image, (width * scale, height * scale))
         image.set_colorkey(BG_COLOR)
         return image
-    
-SPRITES = [Spritesheet(PATH + "spritesheet.png").getImage(x, 34, 34, DEFAULT_SETTINGS["scale"]) for x in range(19)]
-WIN_LOSE = [pygame.image.load(PATH + "%s.png" % name) for name in ("win", "game_over")]
+
+    def load_sprites(self):
+
+        sprites = [self.getImage(x * 34 + 1, 1, 34, 34, SETTINGS["scale"]) for x in range(19)]
+        sprites.insert(WIN, self.getImage(1, 35, 300, 222))
+        sprites.insert(LOSE, self.getImage(301, 35, 300, 222))
+        return sprites
+
+SPRITES = Spritesheet(PATH + "spritesheet.png").load_sprites()

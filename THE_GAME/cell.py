@@ -1,6 +1,6 @@
 import pygame
 
-from globals import (CELL_EDGE, DEFAULT_SETTINGS, DISP, FLAG, CELL, LRB_BORDER, TOP_BORDER)
+from globals import CELL, CELL_EDGE, DISP, FLAG, LRB_BORDER, TOP_BORDER
 from sprites import SPRITES
 
 

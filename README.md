@@ -12,3 +12,6 @@ These are the default settings, with side notes:
     "top_border_size": 100,  # Size of top border
     "lrb_border_size": 16  # Size of Left, Right & Bottom borders.
 }
+
+Import Table:
+ 

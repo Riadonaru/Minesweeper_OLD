@@ -4,12 +4,12 @@ from math import floor
 
 import pygame
 
-import Client
+from client import client
 from cell import Cell
 from grid import Grid
-from globals import (BG_COLOR, CELL_EDGE, COOL, DEFAULT_SETTINGS, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
-                     RESET_SPR, SETTINGS_SPR, DEAD, SHOCKED, SMILE, TOP_BORDER)
-from sprites import WIN_LOSE
+from globals import (BG_COLOR, CELL_EDGE, COOL, LOSE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
+                     RESET, SETTINGS, DEAD, SHOCKED, SMILE, TOP_BORDER, WIN)
+from sprites import SPRITES
 pygame.init()
 
 
@@ -20,20 +20,16 @@ class Game():
     def __init__(self) -> None:
         self.runing = True
         self.flagging = False
-        self.settings = DEFAULT_SETTINGS
         self.flagged_cells = 0
-        self.settings_btn = Cell(
-            self.settings["width"] - 0.75, -2.75, SETTINGS_SPR, False)
-        if self.settings["width"] % 2 == 0:
+        self.settings_btn = Cell(SETTINGS["width"] - 0.75, -2.75, GEAR, False)
+        if SETTINGS["width"] % 2 == 0:
             self.reset_btn = Cell(
-                self.settings["width"] / 2 - 0.5, -2, RESET_SPR, False)
+                SETTINGS["width"] / 2 - 0.5, -2, RESET, False)
         else:
-            self.reset_btn = Cell(
-                RESET_SPR, self.settings["width"] / 2, -2, False)
+            self.reset_btn = Cell(RESET, SETTINGS["width"] / 2, -2, False)
         self.clientThread: threading.Thread = None
-        if self.settings["allow_command_input"]:
-            self.clientThread = threading.Thread(
-                target=Client.client, args=(self,))
+        if SETTINGS["allow_command_input"]:
+            self.clientThread = threading.Thread(target=client, args=(self,))
         self.grid = Grid()
 
     def reveal(self, x: int, y: int):
@@ -59,7 +55,7 @@ class Game():
             y (int): The y coordinate of the cell to
         """
 
-        global RESET_SPR
+        global RESET
 
         if self.grid.contents[y][x].hidden:
             if self.grid.contents[y][x].flagged:
@@ -69,7 +65,7 @@ class Game():
                 self.grid.contents[y][x].flagged = True
                 self.flagged_cells += 1
 
-        if self.flagged_cells == self.grid.num_of_mines:
+        if self.flagged_cells == self.grid.mines:
             b = False
             for list in self.grid.contents:
                 for cell in list:
@@ -82,13 +78,13 @@ class Game():
 
             else:
                 self.flagged_cells = 0
-                RESET_SPR = COOL
+                RESET = COOL
                 self.reset_btn.value = COOL
                 for list in self.grid.contents:
                     for cell in list:
                         if cell.value != -1:
                             cell.hidden = False
-                self.grid.state = 0
+                self.grid.state = WIN
 
     def find_affected_cell(self, event: pygame.event.Event):
         """Reacts to player left click
@@ -99,7 +95,7 @@ class Game():
         """
         x = (event.pos[0] - LRB_BORDER) / CELL_EDGE
         y = (event.pos[1] - TOP_BORDER) / CELL_EDGE
-        if self.grid.state == 1:
+        if self.grid.state == PLAYING:
             if TOP_BORDER < event.pos[1] < DISP_H - LRB_BORDER and LRB_BORDER < event.pos[0] < DISP_W - LRB_BORDER:
                 x = floor(x)
                 y = floor(y)
@@ -125,10 +121,10 @@ class Game():
         y = (event.pos[1] - TOP_BORDER) / CELL_EDGE
         if round(x) == round(self.reset_btn.x) and floor(y) == self.reset_btn.y:
             self.reset_btn.value = SHOCKED
-        elif self.grid.state == -1:
+        elif self.grid.state == LOSE:
             self.reset_btn.value = DEAD
-        elif self.reset_btn.value != RESET_SPR:
-            self.reset_btn.value = RESET_SPR
+        elif self.reset_btn.value != RESET:
+            self.reset_btn.value = RESET
 
     def set_settings(self):
         """This method writes the current settings configuration into settings.json in a readable format.
@@ -151,9 +147,9 @@ class Game():
         Args:
             game (Minesweeper.Game): The game which we are trying to reset
         """
-        global RESET_SPR
+        global RESET
 
-        RESET_SPR = SMILE
+        RESET = SMILE
         self.grid = Grid()
         self.play()
 
@@ -173,26 +169,25 @@ class Game():
             game (Minesweeper.Game): The game which loop we are running
         """
 
-        global RESET_SPR
+        global RESET
 
         self.running = True
         if self.clientThread is not None and not self.clientThread.is_alive():
-            if self.settings["allow_command_input"]:
+            if SETTINGS["allow_command_input"]:
                 self.clientThread.start()
 
         while self.runing:
 
             DISP.fill(BG_COLOR)
-            for y in range(self.settings["height"]):
-                for x in range(self.settings["width"]):
+            for y in range(SETTINGS["height"]):
+                for x in range(SETTINGS["width"]):
                     self.grid.contents[y][x].draw()
 
             self.settings_btn.draw()
             self.reset_btn.draw()
 
-            if self.grid.state != 1:
-                DISP.blit(WIN_LOSE[self.grid.state],
-                          pygame.rect.Rect(10, 10, 10, 10))
+            if self.grid.state != PLAYING:
+                DISP.blit(SPRITES[self.grid.state], (LRB_BORDER, TOP_BORDER))
 
             for event in pygame.event.get():
                 match event.type:

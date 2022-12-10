@@ -1,11 +1,6 @@
-import json
 import socket
-from turtle import st
 
-import globals
-
-HOST = "10.100.102.24"  # The server's hostname or IP address
-PORT = 65432  # The port used by the server
+from globals import HOST, PORT
 
 
 def client(game):
