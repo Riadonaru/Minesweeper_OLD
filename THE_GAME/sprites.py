@@ -1,5 +1,5 @@
 import pygame
-from globals import BG_COLOR, SETTINGS, PATH, WIN, LOSE
+from globals import BG_COLOR, FONT_SIZE, SETTINGS, PATH, WIN, LOSE
 
 class Spritesheet(object):
 
@@ -23,3 +23,5 @@ class Spritesheet(object):
         return sprites
 
 SPRITES = Spritesheet(PATH + "spritesheet.png").load_sprites()
+HOURGLASS = pygame.transform.scale(pygame.image.load(PATH + "hourglass.png"), (FONT_SIZE + 4, FONT_SIZE + 4))
+MINESPR = pygame.transform.scale(SPRITES[-1], (FONT_SIZE + 4, FONT_SIZE + 4))

@@ -1,11 +1,13 @@
+import random
 import threading
+from time import sleep
 from typing import List, Set
 
 import numpy as np
 from playsound import playsound
 
 from cell import Cell
-from globals import CLICKED_MINE, DEAD, LOSE, PLAYING, SETTINGS, MINE, NOMINE, PATH
+from globals import CLICKED_MINE, DEAD, LOSE, PLAYING, SETTINGS, MINE, NOMINE, PATH, SMILE, WIN
 
 
 class Grid():
@@ -14,6 +16,7 @@ class Grid():
 
     def __init__(self) -> None:
         self.state: int = PLAYING  # 1 for playing, 14 for win, 15 for lose.
+        self.troll_mode: bool = False
         self.contents_created: bool = False
         self.tiles = SETTINGS["width"] * SETTINGS["height"]
         self.mines = int(self.tiles * SETTINGS["mines"] / 100)
@@ -21,6 +24,18 @@ class Grid():
             SETTINGS["width"]) for y in range(SETTINGS["height"])])
         self.contents = np.reshape(
             self.contents, (SETTINGS["height"], SETTINGS["width"]), 'F')
+
+    def troll(self):
+        for y in range(SETTINGS["height"]):
+            for x in range(SETTINGS["width"]):
+                value = random.randint(0, 20)
+                self.contents[y][x].value = value
+                self.contents[y][x].x = x
+                self.contents[y][x].y = y
+                self.contents[y][x].create_hitbox()
+                    
+        self.contents_created = True
+
 
     def create_layout(self, x: int = None, y: int = None) -> None:
         """Creates the grid layout for the game and stores it in self.contents
@@ -44,11 +59,14 @@ class Grid():
                 SETTINGS["height"], SETTINGS["width"]))
 
             if SETTINGS["easy_start"]:
-                for b in range(-1, 2):
-                    for a in range(-1, 2):
-                        if 0 <= x + a < SETTINGS["width"] and 0 <= y + b < SETTINGS["height"]:
-                            if self.contents[y + b][x + a].value != 0:
-                                self.contents[y + b][x + a].value = 0
+                if self.contents[y][x].value == MINE:
+                    x_new, y_new = self.find_clear_spot()
+                    if x_new == -1 and y_new == -1:
+                        self.troll_mode = True
+                        self.troll()
+                        return
+                    self.contents[y_new][x_new].value = -1
+                    self.contents[y][x].value = 0
 
             for y in range(SETTINGS["height"]):
                 for x in range(SETTINGS["width"]):
@@ -58,6 +76,17 @@ class Grid():
                     self.contents[y][x].value = self.assign_value(x, y)
 
             self.contents_created = True
+
+
+    def find_clear_spot(self):
+        for y in range(SETTINGS["height"]):
+            for x in range(SETTINGS["width"]):
+                if self.contents[y][x].value == 0:
+                    return x, y
+            
+        return -1, -1
+        
+
 
     def assign_value(self, x_index: int, y_index: int) -> int:
         """Returns the number of adjacent mines to the cell at the given index.

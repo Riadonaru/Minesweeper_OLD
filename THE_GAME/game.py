@@ -1,15 +1,17 @@
 import json
+import random
 import threading
-from math import floor
+from math import floor, sqrt
+import time
 
 import pygame
 
 from client import client
 from cell import Cell
 from grid import Grid
-from globals import (BG_COLOR, CELL_EDGE, COOL, LOSE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
-                     RESET, SETTINGS, DEAD, SHOCKED, SMILE, TOP_BORDER, WIN)
-from sprites import SPRITES
+from globals import (BG_COLOR, CELL_EDGE, COOL, LOSE, MINE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
+                     RESET, SETTINGS, DEAD, SHOCKED, SMILE, TOP_BORDER, WIN, BLACK, FONT_SIZE)
+from sprites import SPRITES, HOURGLASS, MINESPR
 pygame.init()
 
 
@@ -19,16 +21,27 @@ class Game():
 
     def __init__(self) -> None:
         self.runing = True
-        self.flagging = False
         self.flagged_cells = 0
-        self.settings_btn = Cell(SETTINGS["width"] - 0.75, -2.75, value=GEAR, hidden=False, create_hitbox=True)
-        self.reset_btn = Cell(SETTINGS["width"] / 2 - 0.5, -2, value=RESET, hidden=False, create_hitbox=True)
+        self.elapsed_time = 0
+        self.font = pygame.font.Font(
+            PATH + "Font.ttf", FONT_SIZE)
+        self.settings_btn = Cell(
+            SETTINGS["width"] - 0.75, -2.75, value=GEAR, hidden=False, create_hitbox=True)
+        self.reset_btn = Cell(
+            SETTINGS["width"] / 2 - 0.5, -2, value=RESET, hidden=False, create_hitbox=True)
         self.settings_btn.create_hitbox()
         self.reset_btn.create_hitbox()
         self.clientThread: threading.Thread = None
+        self.timerThread = threading.Thread(target=self.timer)
         if SETTINGS["allow_command_input"]:
             self.clientThread = threading.Thread(target=client, args=(self,))
         self.grid = Grid()
+
+    def timer(self):
+        while self.running:
+            while self.grid.contents_created and self.grid.state == PLAYING:
+                self.elapsed_time += 1
+                time.sleep(1)
 
     def reveal(self, x: int, y: int):
         """This method reveals the cell at the given coordinates if possible.
@@ -66,7 +79,7 @@ class Game():
             b = False
             for list in self.grid.contents:
                 for cell in list:
-                    if cell.value == -1 and not cell.flagged:
+                    if cell.value == MINE and not cell.flagged:
                         b = True
                         break
 
@@ -74,7 +87,6 @@ class Game():
                     break
 
             else:
-                self.flagged_cells = 0
                 RESET = COOL
                 self.reset_btn.value = COOL
                 for list in self.grid.contents:
@@ -104,8 +116,15 @@ class Game():
                 except:
                     pass
 
-        if round(x) == round(self.reset_btn.x) and floor(y) == self.reset_btn.y:
+        if self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
             self.reset()
+        elif self.settings_btn.hitbox.collidepoint(event.pos[0], event.pos[1]) and self.grid.troll_mode:
+            if self.grid.contents[0][0].hidden == False:
+                self.grid.troll()
+            else:
+                for y in range(SETTINGS["height"]):
+                    for x in range(SETTINGS["width"]):
+                        self.grid.contents[y][x].hidden = False
 
     def highlight_cell(self, event: pygame.event.Event):
         """Reacts to cursor movement
@@ -145,16 +164,12 @@ class Game():
         global RESET
 
         RESET = SMILE
+        self.elapsed_time = 0
+        self.flagged_cells = 0
+        self.grid.contents_created = False
+        self.grid.troll_mode = False
         self.grid = Grid()
         self.play()
-
-    def exit(self):
-        """Exits the given Game.
-
-        Args:
-            game (Minesweeper.Game): The game we are trying to exit.
-        """
-        self.runing = False
 
     def play(self):
         """This function has the main game loop and should occupie the drawThread of the corrasponding game.
@@ -170,9 +185,17 @@ class Game():
             if SETTINGS["allow_command_input"]:
                 self.clientThread.start()
 
+        if not self.timerThread.is_alive():
+            self.timerThread.start()
+
         while self.runing:
 
+            mines_left = self.font.render(
+                str(self.grid.mines - self.flagged_cells), 0, BLACK)
+            time_elapsed = self.font.render(str(self.elapsed_time), 0, BLACK)
             DISP.fill(BG_COLOR)
+            DISP.blits([(MINESPR, (LRB_BORDER, LRB_BORDER)), (mines_left, (LRB_BORDER + 15, LRB_BORDER + 5)), (HOURGLASS, (LRB_BORDER,
+                       LRB_BORDER * 2)), (time_elapsed, (LRB_BORDER + 15, LRB_BORDER * 2 + 5))])
             for y in range(SETTINGS["height"]):
                 for x in range(SETTINGS["width"]):
                     self.grid.contents[y][x].draw()
@@ -183,6 +206,10 @@ class Game():
             if self.grid.state != PLAYING:
                 DISP.blit(SPRITES[self.grid.state], (LRB_BORDER, TOP_BORDER))
 
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_ESCAPE]:
+                DISP.blit(self.font.render("PAUSED", 0, BLACK), (DISP_W // 2, DISP_H // 2))
+
             for event in pygame.event.get():
                 match event.type:
                     case pygame.MOUSEBUTTONDOWN:
@@ -190,7 +217,8 @@ class Game():
                     case pygame.MOUSEMOTION:
                         self.highlight_cell(event)
                     case pygame.QUIT:
-                        self.exit()
+                        self.runing = False
+
                     case _:
                         pass
             pygame.display.update()

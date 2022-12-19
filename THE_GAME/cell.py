@@ -1,3 +1,4 @@
+from time import sleep
 import pygame
 
 from globals import CELL, CELL_EDGE, DISP, FLAG, LRB_BORDER, TOP_BORDER
@@ -22,7 +23,7 @@ class Cell():
     @hidden.setter
     def hidden(self, __value):
         if self.flagged:
-            raise print("Can't dehide a flagged cell")
+            print("Can't dehide a flagged cell")
         else:
             self.__hidden = __value
 
