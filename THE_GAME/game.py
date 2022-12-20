@@ -9,7 +9,7 @@ import pygame
 from client import client
 from cell import Cell
 from grid import Grid
-from globals import (BG_COLOR, CELL_EDGE, COOL, LOSE, MINE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
+from globals import (BG_COLOR, CELL_EDGE, COOL, LOSE, MINE, PAUSE_FONT_SIZE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
                      RESET, SETTINGS, DEAD, SHOCKED, SMILE, TOP_BORDER, WIN, BLACK, FONT_SIZE)
 from sprites import SPRITES, HOURGLASS, MINESPR
 pygame.init()
@@ -18,13 +18,16 @@ pygame.init()
 class Game():
 
     clicked_cell: Cell = None
-
+    
     def __init__(self) -> None:
         self.runing = True
-        self.flagged_cells = 0
         self.elapsed_time = 0
+        self.flagged_cells = 0
+        self.timer_running = threading.Event()
         self.font = pygame.font.Font(
             PATH + "Font.ttf", FONT_SIZE)
+        self.pause_font = pygame.font.Font(
+            PATH + "Font.ttf", PAUSE_FONT_SIZE)
         self.settings_btn = Cell(
             SETTINGS["width"] - 0.75, -2.75, value=GEAR, hidden=False, create_hitbox=True)
         self.reset_btn = Cell(
@@ -40,6 +43,7 @@ class Game():
     def timer(self):
         while self.running:
             while self.grid.contents_created and self.grid.state == PLAYING:
+                self.timer_running.wait()
                 self.elapsed_time += 1
                 time.sleep(1)
 
@@ -155,6 +159,7 @@ class Game():
 
         self.reset()
 
+
     def reset(self):
         """Resets the given Game.
 
@@ -170,6 +175,13 @@ class Game():
         self.grid.troll_mode = False
         self.grid = Grid()
         self.play()
+
+    def pause(self):
+        if self.timer_running.is_set():
+            self.timer_running.clear()
+        else:
+            self.timer_running.set()
+        
 
     def play(self):
         """This function has the main game loop and should occupie the drawThread of the corrasponding game.
@@ -187,7 +199,10 @@ class Game():
 
         if not self.timerThread.is_alive():
             self.timerThread.start()
+            self.timer_running.set()
 
+        previous = False
+        current = False
         while self.runing:
 
             mines_left = self.font.render(
@@ -196,9 +211,11 @@ class Game():
             DISP.fill(BG_COLOR)
             DISP.blits([(MINESPR, (LRB_BORDER, LRB_BORDER)), (mines_left, (LRB_BORDER + 15, LRB_BORDER + 5)), (HOURGLASS, (LRB_BORDER,
                        LRB_BORDER * 2)), (time_elapsed, (LRB_BORDER + 15, LRB_BORDER * 2 + 5))])
-            for y in range(SETTINGS["height"]):
-                for x in range(SETTINGS["width"]):
-                    self.grid.contents[y][x].draw()
+            
+            if self.timer_running.is_set():
+                for y in range(SETTINGS["height"]):
+                    for x in range(SETTINGS["width"]):
+                        self.grid.contents[y][x].draw()
 
             self.settings_btn.draw()
             self.reset_btn.draw()
@@ -208,17 +225,31 @@ class Game():
 
             keys = pygame.key.get_pressed()
             if keys[pygame.K_ESCAPE]:
-                DISP.blit(self.font.render("PAUSED", 0, BLACK), (DISP_W // 2, DISP_H // 2))
+                if current:
+                    previous = True
+                current = True
+            else:
+                previous = False
+                current = False
+            
+            if current and not previous:
+                self.pause()
+            
+            if not self.timer_running.is_set():
+                text = self.pause_font.render("PAUSED", 0, BLACK)
+                DISP.blit(text, text.get_rect(center=(DISP_W // 2, DISP_H // 2)))
+
 
             for event in pygame.event.get():
                 match event.type:
                     case pygame.MOUSEBUTTONDOWN:
-                        self.find_affected_cell(event)
+                        if self.timer_running.is_set():
+                            self.find_affected_cell(event)
                     case pygame.MOUSEMOTION:
-                        self.highlight_cell(event)
+                        if self.timer_running.is_set():
+                            self.highlight_cell(event)
                     case pygame.QUIT:
                         self.runing = False
-
                     case _:
                         pass
             pygame.display.update()

@@ -31,6 +31,7 @@ TOP_BORDER: int = 100 * SETTINGS["scale"]
 LRB_BORDER: int = 16 * SETTINGS["scale"]
 
 FONT_SIZE = int(12 * SETTINGS["scale"])
+PAUSE_FONT_SIZE = int(40 * SETTINGS["scale"])
 
 HOST = "10.100.102.24"  # The server's hostname or IP address
 PORT = 65432  # The port used by the server

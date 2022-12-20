@@ -1,10 +1,10 @@
 {
     "easy_start": true,
-    "width": 10,
-    "height": 20,
-    "mines": 30,
+    "width": 20,
+    "height": 25,
+    "mines": 20,
     "play_sounds": false,
     "allow_command_input": false,
     "input_source": "client",
-    "scale": 1.2
+    "scale": 1
 }

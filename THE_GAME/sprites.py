@@ -1,5 +1,5 @@
 import pygame
-from globals import BG_COLOR, FONT_SIZE, SETTINGS, PATH, WIN, LOSE
+from globals import BG_COLOR, FONT_SIZE, SETTINGS, PATH, WIN, LOSE, DISP_W
 
 class Spritesheet(object):
 
