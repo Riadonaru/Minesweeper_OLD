@@ -1,13 +1,11 @@
 import random
 import threading
-from time import sleep
-from typing import List, Set
+from typing import List
 
 import numpy as np
-from playsound import playsound
-
 from cell import Cell
-from globals import CLICKED_MINE, DEAD, LOSE, PLAYING, SETTINGS, MINE, NOMINE, PATH, SMILE, WIN
+from globals import CLICKED_MINE, LOSE, MINE, NOMINE, PATH, PLAYING, SETTINGS
+from playsound import playsound
 
 
 class Grid():
@@ -33,9 +31,8 @@ class Grid():
                 self.contents[y][x].x = x
                 self.contents[y][x].y = y
                 self.contents[y][x].create_hitbox()
-                    
-        self.contents_created = True
 
+        self.contents_created = True
 
     def create_layout(self, x: int = None, y: int = None) -> None:
         """Creates the grid layout for the game and stores it in self.contents
@@ -77,16 +74,13 @@ class Grid():
 
             self.contents_created = True
 
-
     def find_clear_spot(self):
         for y in range(SETTINGS["height"]):
             for x in range(SETTINGS["width"]):
                 if self.contents[y][x].value == 0:
                     return x, y
-            
-        return -1, -1
-        
 
+        return -1, -1
 
     def assign_value(self, x_index: int, y_index: int) -> int:
         """Returns the number of adjacent mines to the cell at the given index.
@@ -141,10 +135,9 @@ class Grid():
                     for x in range(-1, 2):
                         if 0 <= cell.x + x < SETTINGS["width"] and 0 <= cell.y + y < SETTINGS["height"]:
                             adj_cell = self.contents[cell.y +
-                                                        y][cell.x + x]
+                                                     y][cell.x + x]
                             if not adj_cell.flagged:
                                 self.reveal_next(adj_cell.x, adj_cell.y)
-
 
     def check_saturation(self, x: int, y: int) -> bool:
         """This method checks if there are as much flags around a cell as the number on it.

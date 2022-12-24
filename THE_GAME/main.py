@@ -1,9 +1,9 @@
-from game import Game
+from client import Client
 
 
 def main():
-    GAME = Game()
-    GAME.play()
+    CLIENT = Client()
+    CLIENT.run()
 
 if __name__ == "__main__":
     main()

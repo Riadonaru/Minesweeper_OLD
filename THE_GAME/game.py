@@ -1,15 +1,15 @@
 import json
 import random
+import socket
 import threading
 from math import floor, sqrt
 import time
 
 import pygame
 
-from client import client
 from cell import Cell
 from grid import Grid
-from globals import (BG_COLOR, CELL_EDGE, COOL, LOSE, MINE, PAUSE_FONT_SIZE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH,
+from globals import (BG_COLOR, CELL_EDGE, COOL, HOST, LOSE, MINE, PAUSE_FONT_SIZE, PLAYING, GEAR, DISP, DISP_H, DISP_W, LRB_BORDER, PATH, PORT,
                      RESET, SETTINGS, DEAD, SHOCKED, SMILE, TOP_BORDER, WIN, BLACK, FONT_SIZE)
 from sprites import SPRITES, HOURGLASS, MINESPR
 pygame.init()
@@ -20,7 +20,7 @@ class Game():
     clicked_cell: Cell = None
     
     def __init__(self) -> None:
-        self.runing = True
+        self.running = True
         self.elapsed_time = 0
         self.flagged_cells = 0
         self.timer_running = threading.Event()
@@ -34,18 +34,8 @@ class Game():
             SETTINGS["width"] / 2 - 0.5, -2, value=RESET, hidden=False, create_hitbox=True)
         self.settings_btn.create_hitbox()
         self.reset_btn.create_hitbox()
-        self.clientThread: threading.Thread = None
-        self.timerThread = threading.Thread(target=self.timer)
-        if SETTINGS["allow_command_input"]:
-            self.clientThread = threading.Thread(target=client, args=(self,))
         self.grid = Grid()
 
-    def timer(self):
-        while self.running:
-            while self.grid.contents_created and self.grid.state == PLAYING:
-                self.timer_running.wait()
-                self.elapsed_time += 1
-                time.sleep(1)
 
     def reveal(self, x: int, y: int):
         """This method reveals the cell at the given coordinates if possible.
@@ -144,6 +134,7 @@ class Game():
         elif self.reset_btn.value != RESET:
             self.reset_btn.value = RESET
 
+
     def set_settings(self):
         """This method writes the current settings configuration into settings.json in a readable format.
         """
@@ -192,18 +183,9 @@ class Game():
 
         global RESET
 
-        self.running = True
-        if self.clientThread is not None and not self.clientThread.is_alive():
-            if SETTINGS["allow_command_input"]:
-                self.clientThread.start()
-
-        if not self.timerThread.is_alive():
-            self.timerThread.start()
-            self.timer_running.set()
-
         previous = False
         current = False
-        while self.runing:
+        while self.running:
 
             mines_left = self.font.render(
                 str(self.grid.mines - self.flagged_cells), 0, BLACK)
