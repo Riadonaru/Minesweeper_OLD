@@ -55,15 +55,14 @@ class Grid():
             self.contents: List[List[Cell]] = list(self.contents.reshape(
                 SETTINGS["height"], SETTINGS["width"]))
 
-            if SETTINGS["easy_start"]:
-                if self.contents[y][x].value == MINE:
-                    x_new, y_new = self.find_clear_spot()
-                    if x_new == -1 and y_new == -1:
-                        self.troll_mode = True
-                        self.troll()
-                        return
-                    self.contents[y_new][x_new].value = -1
-                    self.contents[y][x].value = 0
+            if SETTINGS["easy_start"] and self.contents[y][x].value == MINE:
+                x_new, y_new = self.find_clear_spot()
+                if x_new == -1 and y_new == -1:
+                    self.troll_mode = True
+                    self.troll()
+                    return
+                self.contents[y_new][x_new].value = -1
+                self.contents[y][x].value = 0
 
             for y in range(SETTINGS["height"]):
                 for x in range(SETTINGS["width"]):
