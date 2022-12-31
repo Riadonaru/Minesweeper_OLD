@@ -1,8 +1,9 @@
 import socket
 import threading
-from typing import Dict
+from typing import Dict, List
 
-from classes import CLIENTS, Communicator, Client
+from client import Client
+from classes import CLIENTS, Communicator
 
 HOST = '10.100.102.24'
 PORT = 65432
@@ -11,17 +12,21 @@ RECVR: Client = None
 class Server():
 
     def __init__(self) -> None:
-        self.server_socket = socket.socket()
-        self.threads = 0
+        self.socket = socket.socket()
+        self.num_of_threads = 0
+        self.clients: List[Client] = []
+        self.thread = threading.Thread(target=self.main_loop)
         try:
-            self.server_socket.bind((HOST, PORT))
+            self.socket.bind((HOST, PORT))
         except socket.error as e:
             print(str(e))
         print('Socket is listening..')
-        self.server_socket.listen(5)
+        self.socket.listen(5)
 
+    def main_loop(self):
+        pass
 
-    def inputListener(self):
+    def input_listener(self):
 
         global RECVR
 
@@ -37,26 +42,26 @@ class Server():
                 else:
                     print("Can't execute command as no client was chosen")
             else:
-                self.server_socket.close()
+                self.socket.close()
                 break
 
     def run(self):
 
-        threading.Thread(target=self.inputListener).start()
-        with self.server_socket:
+        threading.Thread(target=self.input_listener).start()
+        with self.socket:
             while True:
-                clientconn, address = self.server_socket.accept()
+                clientconn, address = self.socket.accept()
                 print('Connected to: ' + address[0] + ':' + str(address[1]))
-                client = Client(self.threads, str(
+                client = Client(self.num_of_threads, str(
                     clientconn.recv(2048), 'ascii'), clientconn)
                 client.socket.sendall(bytes('Server recognizes you as %s %s' % (client.type, client.id), 'ascii'))
-                if self.threads == 0:
+                if self.num_of_threads == 0:
                     RECVR = client
                 threading.Thread(target=CLIENT_TYPES[client.type], args=(client,)).start()
                 print("%s is connected & handled by thread %s" %
                     (client.type, client.id))
                 CLIENTS.append(client)
-                self.threads += 1
+                self.num_of_threads += 1
 
 def mineSweeper(client: Client):
 
