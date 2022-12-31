@@ -1,34 +1,4 @@
-from os import stat
-import socket
-import threading
-from typing import Any, List
-
-class Client():
-
-    _acceptedClientTypes = {"minesweeper", "snake"}
-
-    def __init__(self, id: int, type: str, socket: socket.socket) -> None:
-        self.id = id
-        self.type = type  # Bot, Game, etc.
-        self.socket = socket
-
-
-    @property
-    def type(self):
-        return self.__type
-
-
-    @type.setter
-    def type(self, __value):
-        if __value in Client._acceptedClientTypes:
-            self.__type = __value
-        else:
-            raise Exception("Client type cannot be " + __value + "!")
-
-    def forward(self, message: List[str]):
-        pass
-
-
+from client import Client
 
 class Singleton(type):
     _instances = {}
@@ -55,4 +25,3 @@ class Communicator(metaclass=Singleton):
     def listen(client: Client):
         return str(client.socket.recv(2048), 'ascii')
                     
-CLIENTS: List[Client] = []
