@@ -1,81 +1,60 @@
+import signal
 import socket
+import os
 import threading
-from typing import Dict, List
+from typing import List
 
-from classes import Communicator
 from client import Client
-
-HOST = '10.100.102.24'
-PORT = 65432
-RECVR: Client = None
+import globals
+from message import Message
+import time
 
 class Server():
 
     def __init__(self) -> None:
         self.socket = socket.socket()
-        try:
-            self.socket.bind((HOST, PORT))
-        except socket.error as e:
-            print(str(e))
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        for i in range(globals.MAX_RETRIES):
+            try:
+                self.socket.bind((globals.HOST, globals.PORT))
+                break
+            except socket.error as e:
+                if i >= globals.MAX_RETRIES - 1:
+                    raise Exception(e)
         self.client_num = 0
         self.clients: List[Client] = []
+        self.inThread = threading.Thread(target=self.usr_inpt)
         self.thread = threading.Thread(target=self.run)
-        print('Socket is listening..')
-        self.socket.listen(5)
+        self.target_client_id = 0
+        print('Listening for incoming connections...')
+        self.socket.listen(globals.MAX_CONNECTIONS)
 
-    # def input_listener(self):
 
-    #     global RECVR
-
-    #     comm = Communicator()
-    #     while True:
-    #         inp = input().split(maxsplit=1)
-    #         if inp[0] != "quit":
-    #             if inp[0] == "client":
-    #                 RECVR = CLIENTS[int(inp[1])]
-                
-    #             if RECVR is not None:
-    #                 comm.pipe(RECVR, inp[0] + " " + inp[1])
-    #             else:
-    #                 print("Can't execute command as no client was chosen")
-    #         else:
-    #             self.socket.close()
-    #             break
-    
-    
-    def mineSweeper(self):
-        comm = Communicator()
-        with self.socket:
-            while True:
-                data = comm.listen(self)
-                print(data)
-                if not data:
-                    break
-
-            del self.clients[self.id]
-            self.client_num -= 1
-            
-    def snake(self):
-        pass
-
+    def usr_inpt(self):
+        while True:
+            inpt = input()
+            splinpt = inpt.split(maxsplit=1)
+            match splinpt[0]:
+                case "switch":
+                    self.target_client_id = int(splinpt[1])
+                case "shutdown":
+                    os.kill(os.getpid(), signal.SIGTERM)
+                case _:
+                    msg = Message(inpt, self.target_client_id, self.clients[self.target_client_id].socket)
+                    msg.send()
 
     def run(self):
+        if not self.inThread.is_alive():
+            self.inThread.start()
 
-        # threading.Thread(target=self.input_listener).start()
         with self.socket:
             while True:
-                clientconn, address = self.socket.accept()
+                try:
+                    socket, address = self.socket.accept()
+                except:
+                    print("Socket stopped listening to incoming connections")
+                    break
                 print('Connected to: ' + address[0] + ':' + str(address[1]))
-                new_client = Client(self.client_num, str(
-                    clientconn.recv(2048), 'ascii'), clientconn)
-                new_client.socket.sendall(bytes('Server recognizes you as %s %i' % (new_client.type, new_client.id), 'ascii'))
-                print("%s is connected & handled by thread %s" % (new_client.type, new_client.id))
+                new_client = Client(self.client_num, socket)
                 self.clients.append(new_client)
                 self.client_num += 1
-
-    types: Dict[str, callable] = {"minesweeper": mineSweeper,
-                                        "snake": snake
-                                }
-
-
-

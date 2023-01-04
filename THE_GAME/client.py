@@ -1,20 +1,20 @@
 import socket
 import threading
 from typing import List
-from globals import SETTINGS, HOST, PORT, PLAYING
+from globals import MAX_RETRIES, SETTINGS, HOST, PORT, PLAYING, MAX_MSG_LEN
 from game import Game
 import time
+from message import Message
 
 class Client():
 
     def __init__(self) -> None:
         self.game = Game()
-        self.inpt_src = SETTINGS["input_source"]
-        self.socket: socket.socket = None
         self.id: int = None
         self.clientThread: threading.Thread = None
         self.timerThread = threading.Thread(target=self.timer)
         if SETTINGS["allow_command_input"]:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.clientThread = threading.Thread(target=self.client)
 
     def timer(self):
@@ -24,54 +24,23 @@ class Client():
                 self.game.elapsed_time += 1
                 time.sleep(1)
 
-    def retry_connection(self):
-        try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((HOST, PORT))
-            self.socket.sendall(b'minesweeper')
-            data = str(self.socket.recv(2048), "ascii")
-            print(data)
-            self.id = int(data.split()[-1])
-        except:
-            print("Error trying to connect to the server")
-            self.socket.close()
 
     def process_request(self, data: List[str]):
 
         match data[0]:
+            case "Pinging...":
+                print(data[0] + " " + data[1])
 
             case "say":
                 print(data[1])
-                if self.inpt_src == "server":
-                    self.socket.sendall(b'aquired by client')
-
+                
             case"client":
-                if int(data[1]) == self.id:
-                    self.socket.sendall(bytes('Successfully Connected to Client %s' % (self.id), 'ascii'))
+                msg = Message("Hello from client: ", self.id, self.socket)
+                msg.send()
 
             case "reveal":
                 data = data[1].split()
                 self.game.reveal(int(data[0]), int(data[1]))
-
-            case "setting":
-                data = data[1].split()
-                match str(type(self.settings[data[0]])):
-                    
-                    case "<class 'bool'>":
-                        if data[1] == "True":
-                            SETTINGS[data[0]] = True
-                        elif data[1] == "False":
-                            SETTINGS[data[0]] = False
-                        else:
-                            self.socket.sendall(bytes(data[1] + " is not a valid entry!", 'ascii'))
-                    
-                    case "<class 'int'>":
-                        SETTINGS[data[0]] = int(data[1])
-
-                    case "<class 'str'>":
-                        SETTINGS[data[0]] = str(data[1])
-                
-                self.game.set_settings()
 
             case "flag":
                 data = data[1].split()
@@ -83,29 +52,43 @@ class Client():
             case _:
                 print(data[0] + ": Command not found")
 
+        msg = Message(data[0], self.id, self.socket)
+        msg.send()
+
+    def connect(self):
+        i = 0
+        while self.socket is None or self.id is None:
+            try:
+                print("trying to connect to the server...")
+                self.socket.connect((HOST, PORT))
+                msg = Message.decipher(self.socket.recv(MAX_MSG_LEN))
+                data = msg.get_content()
+                self.id = int(msg.id)
+                print(data, "Id: %i" % self.id)
+                return True
+            except:
+                i += 1
+                print("Try %i Failed" % i)
+                if i >= MAX_RETRIES:
+                    print("Couldn't connect to the server")
+                    return False
+                time.sleep(i)
+
     def client(self):
         
-        try:
-            while self.game.running:
-                self.inpt_src = SETTINGS["input_source"]
+        if self.connect():
+            with self.socket:
+                while self.game.running:
+                    msg = Message.decipher(self.socket.recv(MAX_MSG_LEN))
+                    if msg == None:
+                        print("Server died... :(")
+                        if not self.connect():
+                            break # TODO FIX
 
-                if self.inpt_src == "client":
-                    data = input()
-                elif self.inpt_src == "server":
-                    if self.socket is None or self.id is None:
-                        self.retry_connection()
-                    data = str(self.socket.recv(2048), "ascii")
-                
-                data = data.split(maxsplit=1)
+                    data = msg.get_content().split(maxsplit=1)
 
-                if not data:
-                    break
-                self.process_request(data)
-        except Exception as e:
-            print(e)
-        finally:
-            if self.socket is not None:
-                self.socket.close()
+                    self.process_request(data)
+
 
     def run(self):
         self.game.running = True
@@ -118,3 +101,4 @@ class Client():
             self.game.timer_running.set()
 
         self.game.play()
+        self.socket.close()

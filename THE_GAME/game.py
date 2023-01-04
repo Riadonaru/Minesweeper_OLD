@@ -231,7 +231,7 @@ class Game():
                         if self.timer_running.is_set():
                             self.highlight_cell(event)
                     case pygame.QUIT:
-                        self.runing = False
+                        self.running = False
                     case _:
                         pass
             pygame.display.update()

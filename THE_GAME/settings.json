@@ -1,10 +1,9 @@
 {
     "easy_start": true,
-    "width": 20,
-    "height": 25,
+    "width": 10,
+    "height": 10,
     "mines": 15,
     "play_sounds": false,
     "allow_command_input": true,
-    "input_source": "server",
     "scale": 1
 }
