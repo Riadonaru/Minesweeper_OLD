@@ -1,10 +1,13 @@
+import os
+import signal
 import socket
 import threading
 from typing import List
-from globals import MAX_RETRIES, SETTINGS, HOST, PORT, PLAYING, MAX_MSG_LEN
+from globals import MAX_RETRIES, PATH, SETTINGS, HOST, PORT, PLAYING, MAX_MSG_LEN
 from game import Game
 import time
 from message import Message
+from playsound import playsound
 
 class Client():
 
@@ -14,7 +17,6 @@ class Client():
         self.clientThread: threading.Thread = None
         self.timerThread = threading.Thread(target=self.timer)
         if SETTINGS["allow_command_input"]:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.clientThread = threading.Thread(target=self.client)
 
     def timer(self):
@@ -27,36 +29,51 @@ class Client():
 
     def process_request(self, data: List[str]):
 
+        res = None
         match data[0]:
-            case "Pinging...":
-                print(data[0] + " " + data[1])
-
             case "say":
                 print(data[1])
                 
             case"client":
-                msg = Message("Hello from client: ", self.id, self.socket)
-                msg.send()
+                res = "Hello from client %i" % self.id
+
+            case "sound":
+                playsound(PATH + "game-over.mp3")
+
+            case "get":
+                res = ""
+                vars = data[1].split()
+                for y in range(-2, 3):
+                    for x in range(-2, 3):
+                        res += " %i" % self.game.grid.contents[int(vars[0]) + y][int(vars[1]) + x].data()
 
             case "reveal":
-                data = data[1].split()
-                self.game.reveal(int(data[0]), int(data[1]))
+                vars = data[1].split()
+                self.game.reveal(int(vars[0]), int(vars[1]))
 
             case "flag":
-                data = data[1].split()
-                self.game.flag(int(data[0]), int(data[1]))
+                vars = data[1].split()
+                self.game.flag(int(vars[0]), int(vars[1]))
 
             case "reset":
                 self.game.reset()
+            
+            case "shutdown":
+                os.kill(os.getpid(), signal.SIGTERM)
 
             case _:
-                print(data[0] + ": Command not found")
+                res = data[0] + ": Command not found"
+                print(res)
 
         msg = Message(data[0], self.id, self.socket)
         msg.send()
+        if res != None:
+            msg = Message(res, self.id, self.socket)
+            msg.send()
 
     def connect(self):
         i = 0
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         while self.socket is None or self.id is None:
             try:
                 print("trying to connect to the server...")
@@ -66,7 +83,7 @@ class Client():
                 self.id = int(msg.id)
                 print(data, "Id: %i" % self.id)
                 return True
-            except:
+            except ConnectionRefusedError:
                 i += 1
                 print("Try %i Failed" % i)
                 if i >= MAX_RETRIES:
@@ -82,11 +99,14 @@ class Client():
                     msg = Message.decipher(self.socket.recv(MAX_MSG_LEN))
                     if msg == None:
                         print("Server died... :(")
+                        self.socket = None
+                        self.id = None
                         if not self.connect():
                             break # TODO FIX
+                        else:
+                            continue
 
                     data = msg.get_content().split(maxsplit=1)
-
                     self.process_request(data)
 
 
@@ -102,3 +122,6 @@ class Client():
 
         self.game.play()
         self.socket.close()
+        os.kill(os.getpid(), signal.SIGTERM)
+
+        

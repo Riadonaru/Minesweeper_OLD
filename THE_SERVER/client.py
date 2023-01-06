@@ -13,8 +13,6 @@ class Client():
         self.socket = socket
         message = Message("Connection successful!", self.id, self.socket)
         message.send()
-        self.outThread = threading.Thread(target=self.output)
-        self.outThread.start()
         self.nn = None # TODO make a way for each client to access the population
     
     def ping(self):
@@ -25,11 +23,3 @@ class Client():
             i += 1
             time.sleep(1)
 
-
-    def output(self):
-        while True:
-            msg = Message.decipher(self.socket.recv(globals.MAX_MSG_LEN))
-            if msg == None:
-                print("Client %i disconnected" % self.id)
-                break
-            msg.print_content()

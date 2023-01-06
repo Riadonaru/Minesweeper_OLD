@@ -3,9 +3,9 @@ import socket
 
 class Message():
 
-    def __init__(self, content: str, senderid: int, dest: socket.socket = None) -> None:
+    def __init__(self, content: str, msgid: int, dest: socket.socket = None) -> None:
         self._content = content
-        self.id = senderid
+        self.id = msgid
         self._dest = dest
 
     @classmethod

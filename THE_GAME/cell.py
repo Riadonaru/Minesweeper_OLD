@@ -46,6 +46,12 @@ class Cell():
     def value(self, __value) -> None:
         self.__content = __value
 
+    
+    def data(self):
+        if self.hidden:
+            return -2
+        return self.__content
+
     def create_hitbox(self):
         self.hitbox = pygame.Rect(LRB_BORDER + self.x * CELL_EDGE,
                                 TOP_BORDER + self.y * CELL_EDGE, CELL_EDGE, CELL_EDGE)
