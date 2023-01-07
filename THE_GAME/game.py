@@ -48,8 +48,10 @@ class Game():
             self.grid.create_layout(x, y)
 
         self.grid.clicked_cell = self.grid.contents[y][x]
-        if self.grid.reveal_next(x, y):
+        mine_loc = self.grid.reveal_next(x, y)
+        if mine_loc:
             self.reset_btn.value = DEAD
+            return mine_loc
 
     def flag(self, x: int, y: int):
         """This method Flags/Unflags the cell at the given coordinates.
@@ -165,7 +167,6 @@ class Game():
         self.grid.contents_created = False
         self.grid.troll_mode = False
         self.grid = Grid()
-        self.play()
 
     def pause(self):
         if self.timer_running.is_set():
@@ -226,7 +227,7 @@ class Game():
                 match event.type:
                     case pygame.MOUSEBUTTONDOWN:
                         if self.timer_running.is_set():
-                            self.find_affected_cell(event)
+                            self.find_affected_cell(event)                    
                     case pygame.MOUSEMOTION:
                         if self.timer_running.is_set():
                             self.highlight_cell(event)

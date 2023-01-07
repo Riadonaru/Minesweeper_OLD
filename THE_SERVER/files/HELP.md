@@ -25,7 +25,11 @@ _Game_:
 
     get [x] [y]:
         Returns a NxN block of cell values around the given cell. Default N=5. The value is an integer representing the number of
-        mines around that cell. -1 Means the cell is a mine and -2 means the cell is not yet revealed.
+        mines around that cell.
+        -1 The cell is a mine.
+        -2 The cell is not yet revealed.
+        -3 The cell is flagged.
+        -4 Filler for where there is no cell.
 
     reveal [x] [y]:
         Simulates a left click on the given coordinate.

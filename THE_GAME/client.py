@@ -3,7 +3,7 @@ import signal
 import socket
 import threading
 from typing import List
-from globals import MAX_RETRIES, PATH, SETTINGS, HOST, PORT, PLAYING, MAX_MSG_LEN
+from globals import MAX_RETRIES, MINE, PATH, SETTINGS, HOST, PORT, PLAYING, MAX_MSG_LEN
 from game import Game
 import time
 from message import Message
@@ -27,12 +27,13 @@ class Client():
                 time.sleep(1)
 
 
-    def process_request(self, data: List[str]):
+    def process_request(self, msg: Message):
 
         res = None
+        data = msg.get_content().split(maxsplit=1)
         match data[0]:
             case "say":
-                print(data[1])
+                print("server:", data[1])
                 
             case"client":
                 res = "Hello from client %i" % self.id
@@ -45,11 +46,18 @@ class Client():
                 vars = data[1].split()
                 for y in range(-2, 3):
                     for x in range(-2, 3):
-                        res += " %i" % self.game.grid.contents[int(vars[0]) + y][int(vars[1]) + x].data()
+                        new_x = int(vars[0]) + x
+                        new_y = int(vars[1]) + y
+                        if 0 <= new_x < SETTINGS["width"] and 0 <= new_y < SETTINGS["height"]:
+                            res += " %i" % self.game.grid.contents[new_y][new_x].data()
+                        else:
+                            res += " -4"
 
             case "reveal":
                 vars = data[1].split()
-                self.game.reveal(int(vars[0]), int(vars[1]))
+                mine_loc = self.game.reveal(int(vars[0]), int(vars[1]))
+                if mine_loc:
+                    res = "mine encountered at %s" % str(mine_loc)
 
             case "flag":
                 vars = data[1].split()
@@ -59,6 +67,7 @@ class Client():
                 self.game.reset()
             
             case "shutdown":
+                print("server: shutdown requested")
                 os.kill(os.getpid(), signal.SIGTERM)
 
             case _:
@@ -106,8 +115,7 @@ class Client():
                         else:
                             continue
 
-                    data = msg.get_content().split(maxsplit=1)
-                    self.process_request(data)
+                    self.process_request(msg)
 
 
     def run(self):

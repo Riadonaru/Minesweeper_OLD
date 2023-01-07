@@ -125,8 +125,9 @@ class Grid():
                         cell.flagged = False
                         cell.hidden = False
 
-            return -1
+            return (x, y)
 
+        mine = None
         if not self.check_cell(cell.x, cell.y):
             cell.hidden = False
             if self.check_saturation(cell.x, cell.y):
@@ -136,7 +137,10 @@ class Grid():
                             adj_cell = self.contents[cell.y +
                                                      y][cell.x + x]
                             if not adj_cell.flagged:
-                                self.reveal_next(adj_cell.x, adj_cell.y)
+                                if self.reveal_next(adj_cell.x, adj_cell.y) == MINE:
+                                    mine = (adj_cell.x, adj_cell.y)
+
+        return MINE if mine else None
 
     def check_saturation(self, x: int, y: int) -> bool:
         """This method checks if there are as much flags around a cell as the number on it.

@@ -49,6 +49,8 @@ class Cell():
     
     def data(self):
         if self.hidden:
+            if self.flagged:
+                return -3
             return -2
         return self.__content
 

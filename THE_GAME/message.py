@@ -25,7 +25,7 @@ class Message():
         return bytes(str(self.id) + " " + self._content, 'ascii')
 
     def print_content(self):
-        print(self._content)
+        print("server:", self._content)
 
     def send(self):
         if self._dest == None:

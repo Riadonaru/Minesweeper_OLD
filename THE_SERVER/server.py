@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import signal
 import socket
@@ -22,7 +23,6 @@ class Server():
                 if i >= globals.MAX_RETRIES - 1:
                     raise Exception(e)
         self.clients: List[Client] = []
-        self.threads: List[threading.Thread] = []
         self.inThread = threading.Thread(target=self.usr_inpt)
         self.thread = threading.Thread(target=self.run)
         self.target_client_id = 0
@@ -40,35 +40,43 @@ class Server():
     def usr_inpt(self):
         while True:
             inpt = input()
-            splinpt = inpt.split(maxsplit=1)
-            match splinpt[0]:
-                case "help":
-                    with open(globals.PATH + "HELP.md") as f:
-                        print(f.read())
+            if inpt:
+                splinpt = inpt.split(maxsplit=1)
+                match splinpt[0]:
+                    case "help":
+                        with open(globals.PATH + "HELP.md") as f:
+                            print(f.read())
 
-                case "switch":
-                    try:
-                        new_id = int(splinpt[1])
-                        if new_id >= len(self.clients):
-                            print("switch: client id must be in %s" % [id for id in range(len(self.clients)) if self.clients[id] != None])
+                    case "switch":
+                        try:
+                            new_id = int(splinpt[1])
+                            if new_id >= len(self.clients) or self.clients[new_id] == None:
+                                print("switch: client id must be in %s" % [id for id in range(len(self.clients)) if self.clients[id] != None])
+                            else:
+                                self.target_client_id = int(splinpt[1])
+                        except ValueError :
+                            print("switch: client id must be a number!")
+
+                    case "shutdown":
+                        try:
+                            if splinpt[1][:3] == "-a":
+                                for client in self.clients:
+                                    if client != None:
+                                        msg = Message("shutdown", client.id, client.socket)
+                                        msg.send()
+                        except Exception:
+                            pass
+                        os.kill(os.getpid(), signal.SIGTERM)
+                    case _:
+                        if len(self.clients) > 0:
+                            target_client = self.clients[self.target_client_id]
+                            if target_client != None:
+                                msg = Message(inpt, self.target_client_id, target_client.socket)
+                                msg.send()
+                            else:
+                                print("Client %i is no longer connected!" % self.target_client_id)
                         else:
-                            self.target_client_id = int(splinpt[1])
-                    except ValueError :
-                        print("switch: client id must be a number!")
-
-                case "shutdown":
-                    try:
-                        if splinpt[1][:3] == "-a":
-                            for client in self.clients:
-                                if client != None:
-                                    msg = Message("shutdown", client.id, client.socket)
-                                    msg.send()
-                    except Exception:
-                        pass
-                    os.kill(os.getpid(), signal.SIGTERM)
-                case _:
-                    msg = Message(inpt, self.target_client_id, self.clients[self.target_client_id].socket)
-                    msg.send()
+                            print("No client is connected...")
 
     def output(self, client: Client):
         get = False
@@ -80,9 +88,14 @@ class Server():
                 break
             if get:
                 get = False
-                data = np.reshape(msg.get_content().split(), (5, 5))
+                num_arr = msg.get_content().split()
+                sqr_edge = int(math.sqrt(len(num_arr)))
+                data = np.reshape(num_arr, (sqr_edge, sqr_edge))
                 for list in data:
                     for num in list:
+                        num = str(num)
+                        if len(num) == 1:
+                            num = " " + num
                         print(num, end=" ")
                     print()
             else:
@@ -100,10 +113,8 @@ class Server():
                 try:
                     socket, address = self.socket.accept()
                 except:
-                    print("\nSocket stopped listening to incoming connections")
+                    print("\nStopped listening to incoming connections")
                     break
                 print('Connected to: ' + address[0] + ':' + str(address[1]))
                 next_id = self.next_client_id()
-                self.clients.insert(next_id, Client(next_id, socket))
-                self.threads.append(threading.Thread(target=self.output, args=(self.clients[next_id],)))
-                self.threads[-1].start()
+                self.clients.insert(next_id, Client(next_id, socket, self.output))

@@ -7,10 +7,12 @@ import globals
 
 class Client():
     
-    def __init__(self, id: int, socket: socket.socket) -> None:
+    def __init__(self, id: int, socket: socket.socket, action: callable) -> None:
         self.id = id
         self.type = None # TODO Snake/Minesweeper/PacMan, etc...
         self.socket = socket
+        self.thread = threading.Thread(target=action, args=(self,))
+        self.thread.start()
         message = Message("Connection successful!", self.id, self.socket)
         message.send()
         self.nn = None # TODO make a way for each client to access the population
