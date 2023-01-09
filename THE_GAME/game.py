@@ -100,19 +100,18 @@ class Game():
         """
         x = (event.pos[0] - LRB_BORDER) / CELL_EDGE
         y = (event.pos[1] - TOP_BORDER) / CELL_EDGE
-        if self.grid.state == PLAYING:
-            if TOP_BORDER < event.pos[1] < DISP_H - LRB_BORDER and LRB_BORDER < event.pos[0] < DISP_W - LRB_BORDER:
-                x = floor(x)
-                y = floor(y)
-                actions = {1: self.reveal,
-                           3: self.flag,
-                           }
-                try:
-                    actions[event.button](x, y)
-                except:
-                    pass
+        if self.grid.state == PLAYING and TOP_BORDER < event.pos[1] < DISP_H - LRB_BORDER and LRB_BORDER < event.pos[0] < DISP_W - LRB_BORDER:
+            x = floor(x)
+            y = floor(y)
+            actions = {1: self.reveal,
+                        3: self.flag,
+                        }
+            try:
+                actions[event.button](x, y)
+            except:
+                pass
 
-        if self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
+        elif self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
             self.reset()
         elif self.settings_btn.hitbox.collidepoint(event.pos[0], event.pos[1]) and self.grid.troll_mode:
             if self.grid.contents[0][0].hidden == False:

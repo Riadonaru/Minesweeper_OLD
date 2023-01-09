@@ -14,10 +14,10 @@ class Client():
     def __init__(self) -> None:
         self.game = Game()
         self.id: int = None
-        self.clientThread: threading.Thread = None
-        self.timerThread = threading.Thread(target=self.timer)
+        self.client_thread: threading.Thread = None
+        self.timer_thread = threading.Thread(target=self.timer)
         if SETTINGS["allow_command_input"]:
-            self.clientThread = threading.Thread(target=self.client)
+            self.client_thread = threading.Thread(target=self.listen)
 
     def timer(self):
         while self.game.running:
@@ -43,25 +43,25 @@ class Client():
 
             case "get":
                 res = ""
-                vars = data[1].split()
+                args = data[1].split()
                 for y in range(-2, 3):
                     for x in range(-2, 3):
-                        new_x = int(vars[0]) + x
-                        new_y = int(vars[1]) + y
+                        new_x = int(args[0]) + x
+                        new_y = int(args[1]) + y
                         if 0 <= new_x < SETTINGS["width"] and 0 <= new_y < SETTINGS["height"]:
                             res += " %i" % self.game.grid.contents[new_y][new_x].data()
                         else:
                             res += " -4"
 
             case "reveal":
-                vars = data[1].split()
-                mine_loc = self.game.reveal(int(vars[0]), int(vars[1]))
+                args = data[1].split()
+                mine_loc = self.game.reveal(int(args[0]), int(args[1]))
                 if mine_loc:
                     res = "mine encountered at %s" % str(mine_loc)
 
             case "flag":
-                vars = data[1].split()
-                self.game.flag(int(vars[0]), int(vars[1]))
+                args = data[1].split()
+                self.game.flag(int(args[0]), int(args[1]))
 
             case "reset":
                 self.game.reset()
@@ -100,7 +100,7 @@ class Client():
                     return False
                 time.sleep(i)
 
-    def client(self):
+    def listen(self):
         
         if self.connect():
             with self.socket:
@@ -111,7 +111,7 @@ class Client():
                         self.socket = None
                         self.id = None
                         if not self.connect():
-                            break # TODO FIX
+                            break
                         else:
                             continue
 
@@ -120,12 +120,12 @@ class Client():
 
     def run(self):
         self.game.running = True
-        if self.clientThread is not None and not self.clientThread.is_alive():
+        if self.client_thread is not None and not self.client_thread.is_alive():
             if SETTINGS["allow_command_input"]:
-                self.clientThread.start()
+                self.client_thread.start()
 
-        if not self.timerThread.is_alive():
-            self.timerThread.start()
+        if not self.timer_thread.is_alive():
+            self.timer_thread.start()
             self.game.timer_running.set()
 
         self.game.play()

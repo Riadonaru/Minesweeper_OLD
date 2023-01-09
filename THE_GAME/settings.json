@@ -1,7 +1,7 @@
 {
     "easy_start": true,
-    "width": 5,
-    "height": 5,
+    "width": 20,
+    "height": 15,
     "mines": 15,
     "play_sounds": false,
     "allow_command_input": true,
