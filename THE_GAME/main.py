@@ -1,6 +1,5 @@
 from client import Client
 
-
 def main():
     CLIENT = Client()
     CLIENT.run()

@@ -30,4 +30,7 @@ class Message():
     def send(self):
         if self._dest == None:
             raise Exception("No send destination was specified!")
-        self._dest.sendall(self.to_bytes())
+        try:
+            self._dest.sendall(self.to_bytes())
+        except:
+            print("client:", self._content)
