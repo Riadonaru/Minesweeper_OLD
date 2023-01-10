@@ -7,7 +7,7 @@ class Spritesheet(object):
         self.sheet = pygame.image.load(file).convert_alpha()
 
         
-    def getImage(self, x, y, width, height, scale: int = 1):
+    def get_image(self, x, y, width, height, scale: int = 1):
         image = pygame.Surface((width, height)).convert_alpha()
         image.fill(BG_COLOR)
         image.blit(self.sheet, (0, 0), (x, y, width, height))
@@ -17,9 +17,9 @@ class Spritesheet(object):
 
     def load_sprites(self):
 
-        sprites = [self.getImage(x * 34 + 1, 1, 34, 34, SETTINGS["scale"]) for x in range(19)]
-        sprites.insert(WIN, self.getImage(1, 35, 300, 222))
-        sprites.insert(LOSE, self.getImage(301, 35, 300, 222))
+        sprites = [self.get_image(x * 34 + 1, 1, 34, 34, SETTINGS["scale"]) for x in range(19)]
+        sprites.insert(WIN, self.get_image(1, 35, 300, 222))
+        sprites.insert(LOSE, self.get_image(301, 35, 300, 222))
         return sprites
 
 SPRITES = Spritesheet(PATH + "spritesheet.png").load_sprites()

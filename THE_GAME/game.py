@@ -1,8 +1,5 @@
-import json
-import random
-import socket
 import threading
-from math import floor, sqrt
+from math import floor
 import time
 
 import pygame
@@ -44,6 +41,7 @@ class Game():
                 self.timer_running.wait()
                 self.elapsed_time += 1
                 time.sleep(1)
+        
 
 
     def reveal(self, x: int, y: int):
@@ -118,7 +116,7 @@ class Game():
             try:
                 actions[event.button](x, y)
             except:
-                raise
+                pass
 
         elif self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
             self.reset()
@@ -145,21 +143,6 @@ class Game():
             self.reset_btn.value = RESET
 
 
-    def set_settings(self):
-        """This method writes the current settings configuration into settings.json in a readable format.
-        """
-
-        with open(PATH[:-6] + "settings.json", "w") as stngs:
-            settings = json.dumps(SETTINGS).split(", ")
-            stngs.write("{\n")
-            stngs.write("    " + settings[0][1:] + ",\n")
-            stngs.writelines(
-                ["    " + settings[i] + ",\n" for i in range(1, len(settings) - 1)])
-            stngs.write("    " + settings[len(settings) - 1][:-1] + "\n")
-            stngs.write("}")
-
-        self.reset()
-
 
     def reset(self):
         """Resets the given Game.
@@ -176,7 +159,12 @@ class Game():
         self.grid.troll_mode = False
         self.grid = Grid()
 
-
+    def hard_reset(self):
+        global DISP
+        
+        pass # TODO
+    
+    
     def pause(self):
         if self.timer_running.is_set():
             self.timer_running.clear()
