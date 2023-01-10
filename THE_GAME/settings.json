@@ -4,10 +4,11 @@
     "height": 15,
     "mines": 15,
     "play_sounds": false,
-    "allow_command_input": true,
+    "allow_commands": true,
     "server_data": {
         "host": "127.0.0.1",
         "port": 65432
     },
+    "connect": false,
     "scale": 1
 }

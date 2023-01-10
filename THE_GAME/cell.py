@@ -1,4 +1,3 @@
-from time import sleep
 import pygame
 
 from globals import CELL, CELL_EDGE, DISP, FLAG, LRB_BORDER, TOP_BORDER
@@ -6,7 +5,7 @@ from sprites import SPRITES
 
 
 class Cell():
-
+    
     def __init__(self, x: int = 0, y: int = 0, value: int = 0, hidden: bool = True, create_hitbox: bool = False) -> None:
         self.__hidden: bool = hidden
         self.__flagged: bool = False
