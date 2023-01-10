@@ -24,6 +24,7 @@ class Game():
         self.elapsed_time = 0
         self.flagged_cells = 0
         self.timer_running = threading.Event()
+        self.timer_thread = threading.Thread(target=self.timer)
         self.font = pygame.font.Font(
             PATH + "Font.ttf", FONT_SIZE)
         self.pause_font = pygame.font.Font(
@@ -35,6 +36,14 @@ class Game():
         self.settings_btn.create_hitbox()
         self.reset_btn.create_hitbox()
         self.grid = Grid()
+
+
+    def timer(self):
+        while self.running:
+            while self.grid.contents_created and self.grid.state == PLAYING:
+                self.timer_running.wait()
+                self.elapsed_time += 1
+                time.sleep(1)
 
 
     def reveal(self, x: int, y: int):
@@ -100,19 +109,18 @@ class Game():
         """
         x = (event.pos[0] - LRB_BORDER) / CELL_EDGE
         y = (event.pos[1] - TOP_BORDER) / CELL_EDGE
-        if self.grid.state == PLAYING:
-            if TOP_BORDER < event.pos[1] < DISP_H - LRB_BORDER and LRB_BORDER < event.pos[0] < DISP_W - LRB_BORDER:
-                x = floor(x)
-                y = floor(y)
-                actions = {1: self.reveal,
-                           3: self.flag,
-                           }
-                try:
-                    actions[event.button](x, y)
-                except:
-                    pass
+        if self.grid.state == PLAYING and TOP_BORDER < event.pos[1] < DISP_H - LRB_BORDER and LRB_BORDER < event.pos[0] < DISP_W - LRB_BORDER:
+            x = floor(x)
+            y = floor(y)
+            actions = {1: self.reveal,
+                        3: self.flag,
+                        }
+            try:
+                actions[event.button](x, y)
+            except:
+                raise
 
-        if self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
+        elif self.reset_btn.hitbox.collidepoint(event.pos[0], event.pos[1]):
             self.reset()
         elif self.settings_btn.hitbox.collidepoint(event.pos[0], event.pos[1]) and self.grid.troll_mode:
             if self.grid.contents[0][0].hidden == False:
@@ -168,6 +176,7 @@ class Game():
         self.grid.troll_mode = False
         self.grid = Grid()
 
+
     def pause(self):
         if self.timer_running.is_set():
             self.timer_running.clear()
@@ -183,7 +192,7 @@ class Game():
         """
 
         global RESET
-
+        
         previous = False
         current = False
         while self.running:
@@ -233,8 +242,15 @@ class Game():
                             self.highlight_cell(event)
                     case pygame.QUIT:
                         self.running = False
-                    case _:
-                        pass
             pygame.display.update()
 
         pygame.quit()
+
+
+    def run(self):
+        self.running = True
+        if not self.timer_thread.is_alive():
+            self.timer_thread.start()
+            self.timer_running.set()
+
+        self.play()

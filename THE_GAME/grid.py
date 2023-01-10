@@ -109,7 +109,7 @@ class Grid():
         """This method has the reveal algo.
         """
         cell = self.contents[y][x]
-        if cell.value == MINE:
+        if cell.value == MINE and not cell.flagged:
             cell.value = CLICKED_MINE
             self.state = LOSE
             if SETTINGS["play_sounds"]:

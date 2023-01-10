@@ -21,9 +21,9 @@ class Server():
                 break
             except socket.error as e:
                 if i >= globals.MAX_RETRIES - 1:
-                    raise Exception(e)
+                    raise socket.error(e)
         self.clients: List[Client] = []
-        self.inThread = threading.Thread(target=self.usr_inpt)
+        self.inp_thread = threading.Thread(target=self.usr_inpt)
         self.thread = threading.Thread(target=self.run)
         self.target_client_id = 0
         print('Listening for incoming connections...')
@@ -105,16 +105,16 @@ class Server():
                 get = True
 
     def run(self):
-        if not self.inThread.is_alive():
-            self.inThread.start()
+        if not self.inp_thread.is_alive():
+            self.inp_thread.start()
 
         with self.socket:
             while True:
                 try:
-                    socket, address = self.socket.accept()
-                except:
+                    sock, address = self.socket.accept()
+                except socket.error:
                     print("\nStopped listening to incoming connections")
                     break
                 print('Connected to: ' + address[0] + ':' + str(address[1]))
                 next_id = self.next_client_id()
-                self.clients.insert(next_id, Client(next_id, socket, self.output))
+                self.clients.insert(next_id, Client(next_id, sock, self.output))
