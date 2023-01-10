@@ -1,10 +1,11 @@
 import json
+from typing import Dict
 import pygame
 
 PATH = __file__[:-10] + "files/"
 
 with open(PATH[:-6] + "settings.json", "r") as stngs:
-    SETTINGS = json.loads(stngs.read())
+    SETTINGS: Dict[str, any] = json.loads(stngs.read())
 
 BLACK = (0, 0, 0)
 BG_COLOR = (192, 192, 192)

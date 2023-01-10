@@ -63,6 +63,16 @@ class Client():
                 vars = data[1].split()
                 self.game.flag(int(vars[0]), int(vars[1]))
 
+            case "setting":
+                vars = data[1].split()
+                setting = vars[0]
+                if setting in SETTINGS.keys():
+                    val = vars[1]
+                    val = type(SETTINGS[setting])(val)
+                    SETTINGS[setting] = val
+                    self.game.set_settings()
+                else:
+                    print("%s is not a valid setting! Valid settings: %s" % (vars[0], SETTINGS.keys()))
             case "reset":
                 self.game.reset()
             
